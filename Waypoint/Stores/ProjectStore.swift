@@ -27,11 +27,17 @@ enum ProjectViewType: String, CaseIterable {
     case updates = "Updates"
 }
 
+enum IssuesViewMode: String, CaseIterable {
+    case list = "List"
+    case board = "Board"
+}
+
 @Observable
 class ProjectStore {
     var selectedView: SelectedView = .system(.inbox)
     var selectedProject: Project?
     var selectedViewType: ProjectViewType = .overview
+    var issuesViewMode: IssuesViewMode = .board
 
     init() {}
 

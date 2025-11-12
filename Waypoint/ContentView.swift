@@ -65,19 +65,39 @@ struct ContentView: View {
 
 		// Create sample issues for website project
 		let issue1 = Issue(title: "Update homepage design", status: .inProgress, priority: .high, project: websiteProject)
+		issue1.issueDescription = "Redesign the homepage to match the new brand guidelines"
+		issue1.dueDate = Calendar.current.date(byAdding: .day, value: 3, to: Date())
+
 		let issue2 = Issue(title: "Implement responsive layout", status: .todo, priority: .medium, project: websiteProject)
+		issue2.issueDescription = "Ensure the website works well on mobile and tablet devices"
+		issue2.dueDate = Calendar.current.date(byAdding: .day, value: 7, to: Date())
+
 		let issue3 = Issue(title: "Optimize images for web", status: .done, priority: .low, project: websiteProject)
+		issue3.issueDescription = "Compress and optimize all images for faster load times"
+
+		let issue6 = Issue(title: "Fix navigation menu", status: .review, priority: .urgent, project: websiteProject)
+		issue6.issueDescription = "Navigation menu is broken on Safari"
+		issue6.dueDate = Calendar.current.date(byAdding: .day, value: 1, to: Date())
 
 		modelContext.insert(issue1)
 		modelContext.insert(issue2)
 		modelContext.insert(issue3)
+		modelContext.insert(issue6)
 
 		// Create sample issues for mobile project
 		let issue4 = Issue(title: "Design onboarding flow", status: .review, priority: .high, project: mobileProject)
+		issue4.issueDescription = "Create user-friendly onboarding screens for new users"
+		issue4.dueDate = Calendar.current.date(byAdding: .day, value: 5, to: Date())
+
 		let issue5 = Issue(title: "Implement dark mode", status: .todo, priority: .medium, project: mobileProject)
+		issue5.issueDescription = "Add system-wide dark mode support"
+
+		let issue7 = Issue(title: "Add biometric authentication", status: .inProgress, priority: .high, project: mobileProject)
+		issue7.issueDescription = "Support Face ID and Touch ID for secure login"
 
 		modelContext.insert(issue4)
 		modelContext.insert(issue5)
+		modelContext.insert(issue7)
 
 		// Start with Inbox selected (already default in ProjectStore)
 	}
