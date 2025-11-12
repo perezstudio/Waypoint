@@ -34,7 +34,7 @@ struct SpaceColumn: View {
 	// Get current day for calendar icon
 	private var todayCalendarIcon: String {
 		let day = Calendar.current.component(.day, from: Date())
-		return "\(day).circle.fill"
+		return "\(day).calendar"
 	}
 
 	var body: some View {

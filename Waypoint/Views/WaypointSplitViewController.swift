@@ -14,7 +14,7 @@ class WaypointSplitViewController: NSSplitViewController {
     var detailViewController: NSViewController!
 
     var isSidebarCollapsed: Binding<Bool>?
-    var savedSidebarWidth: CGFloat = 350
+    var savedSidebarWidth: CGFloat = 280
 
     override func loadView() {
         // Create and assign custom split view BEFORE calling super
@@ -50,7 +50,7 @@ class WaypointSplitViewController: NSSplitViewController {
 
         // Set initial sidebar width after adding to split view
         DispatchQueue.main.async { [weak self] in
-            self?.splitView.setPosition(350, ofDividerAt: 0)
+            self?.splitView.setPosition(280, ofDividerAt: 0)
         }
     }
 
