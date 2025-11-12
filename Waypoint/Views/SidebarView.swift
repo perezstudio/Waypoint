@@ -10,37 +10,14 @@ import SwiftData
 
 struct SidebarView: View {
 	@Binding var isSidebarCollapsed: Bool
-	@State private var isScrolling: Bool = false
 	@Environment(ProjectStore.self) private var projectStore
-	@Query private var projects: [Project]
-	@Query private var teams: [Team]
-	@Query private var labels: [Label]
 
 	// Creation menu and sheets state
 	@State private var showingCreationMenu = false
 	@State private var showingCreateProject = false
 	@State private var showingCreateIssue = false
 	@State private var showingCreateLabel = false
-	@State private var showingCreateTeam = false
-
-	// Team selection
-	@State private var selectedTeam: Team?
-
-	// Filtered projects based on selected team
-	private var filteredProjects: [Project] {
-		guard let selectedTeam = selectedTeam else {
-			return projects
-		}
-		return projects.filter { $0.team?.id == selectedTeam.id }
-	}
-
-	// Filtered labels based on selected team
-	private var filteredLabels: [Label] {
-		guard let selectedTeam = selectedTeam else {
-			return labels
-		}
-		return labels.filter { $0.team?.id == selectedTeam.id }
-	}
+	@State private var showingCreateSpace = false
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 0) {
@@ -56,136 +33,8 @@ struct SidebarView: View {
 			.padding(.top, 12)
 			.padding(.bottom, 20)
 
-			// Team picker
-			TeamPicker(selectedTeam: $selectedTeam, teams: teams)
-				.padding(.horizontal, 16)
-				.padding(.bottom, 16)
-
-			// Scrollable menu content
-			ScrollView {
-				VStack(alignment: .leading, spacing: 20) {
-					// Top navigation section
-					VStack(alignment: .leading, spacing: 4) {
-						MenuItemView(
-							icon: "tray.fill",
-							label: "Inbox",
-							count: 12,
-							isSelected: projectStore.selectedView == .system(.inbox),
-							action: { projectStore.selectSystemView(.inbox) }
-						)
-						MenuItemView(
-							icon: "calendar",
-							label: "Today",
-							count: 5,
-							isSelected: projectStore.selectedView == .system(.today),
-							action: { projectStore.selectSystemView(.today) }
-						)
-						MenuItemView(
-							icon: "calendar.badge.clock",
-							label: "Upcoming",
-							count: 8,
-							isSelected: projectStore.selectedView == .system(.upcoming),
-							action: { projectStore.selectSystemView(.upcoming) }
-						)
-						MenuItemView(
-							icon: "checkmark.circle.fill",
-							label: "Completed",
-							isSelected: projectStore.selectedView == .system(.completed),
-							action: { projectStore.selectSystemView(.completed) }
-						)
-						MenuItemView(
-							icon: "folder.fill",
-							label: "Projects",
-							count: projects.count,
-							isSelected: projectStore.selectedView == .system(.projects),
-							action: { projectStore.selectSystemView(.projects) }
-						)
-					}
-
-					Divider()
-						.padding(.vertical, 4)
-
-					// Favorite Projects section
-					VStack(alignment: .leading, spacing: 8) {
-						HStack {
-							Text("Favorite Projects")
-								.font(.caption)
-								.foregroundStyle(.secondary)
-
-							if selectedTeam != nil {
-								Text("(\(filteredProjects.count))")
-									.font(.caption2)
-									.foregroundStyle(.tertiary)
-							}
-						}
-						.padding(.leading, 8)
-
-						VStack(alignment: .leading, spacing: 4) {
-							ForEach(filteredProjects) { project in
-								MenuItemView(
-									icon: project.icon,
-									label: project.name,
-									count: project.issues.count,
-									isSelected: projectStore.selectedView == .project(project.id),
-									action: { projectStore.selectProject(project) }
-								)
-							}
-
-							if filteredProjects.isEmpty && selectedTeam != nil {
-								Text("No projects in this team")
-									.font(.caption)
-									.foregroundStyle(.tertiary)
-									.frame(maxWidth: .infinity, alignment: .center)
-									.padding(.vertical, 12)
-							}
-						}
-					}
-
-					Divider()
-						.padding(.vertical, 4)
-
-					// Favorite Labels section
-					VStack(alignment: .leading, spacing: 8) {
-						HStack {
-							Text("Favorite Labels")
-								.font(.caption)
-								.foregroundStyle(.secondary)
-
-							if selectedTeam != nil {
-								Text("(\(filteredLabels.count))")
-									.font(.caption2)
-									.foregroundStyle(.tertiary)
-							}
-						}
-						.padding(.leading, 8)
-
-						VStack(alignment: .leading, spacing: 4) {
-							ForEach(filteredLabels) { label in
-								MenuItemView(
-									icon: label.icon ?? "tag.fill",
-									label: label.name,
-									count: label.issues.count
-								)
-							}
-
-							if filteredLabels.isEmpty && selectedTeam != nil {
-								Text("No labels in this team")
-									.font(.caption)
-									.foregroundStyle(.tertiary)
-									.frame(maxWidth: .infinity, alignment: .center)
-									.padding(.vertical, 12)
-							}
-						}
-					}
-				}
-				.padding(.horizontal, 16)
-			}
-			.scrollIndicators(isScrolling ? .visible : .hidden)
-			.onScrollGeometryChange(for: Bool.self) { geometry in
-				geometry.contentSize.height > geometry.containerSize.height
-			} action: { _, newValue in
-				isScrolling = newValue
-			}
+			// Horizontal scrolling sidebar content
+			HorizontalSidebarContainer()
 
 			// Bottom actions
 			VStack(spacing: 0) {
@@ -215,16 +64,16 @@ struct SidebarView: View {
 		}
 		.frame(maxHeight: .infinity)
 		.sheet(isPresented: $showingCreateProject) {
-			CreateProjectSheet(preselectedTeam: selectedTeam)
+			CreateProjectSheet(preselectedSpace: nil)
 		}
 		.sheet(isPresented: $showingCreateIssue) {
 			CreateIssueSheet()
 		}
 		.sheet(isPresented: $showingCreateLabel) {
-			CreateLabelSheet(preselectedTeam: selectedTeam)
+			CreateLabelSheet(preselectedSpace: nil)
 		}
-		.sheet(isPresented: $showingCreateTeam) {
-			CreateTeamSheet()
+		.sheet(isPresented: $showingCreateSpace) {
+			CreateSpaceSheet()
 		}
 	}
 
@@ -236,80 +85,14 @@ struct SidebarView: View {
 			showingCreateIssue = true
 		case .label:
 			showingCreateLabel = true
-		case .team:
-			showingCreateTeam = true
+		case .space:
+			showingCreateSpace = true
 		}
-	}
-}
-
-// Team Picker Component
-struct TeamPicker: View {
-	@Binding var selectedTeam: Team?
-	let teams: [Team]
-
-	var body: some View {
-		Menu {
-			Button {
-				selectedTeam = nil
-			} label: {
-				HStack {
-					Image(systemName: "square.stack.3d.up")
-					Text("All Teams")
-				}
-			}
-
-			Divider()
-
-			ForEach(teams) { team in
-				Button {
-					selectedTeam = team
-				} label: {
-					HStack {
-						Image(systemName: team.icon)
-							.foregroundStyle(Color(hex: team.color) ?? .blue)
-						Text(team.name)
-					}
-				}
-			}
-		} label: {
-			HStack(spacing: 8) {
-				if let team = selectedTeam {
-					Image(systemName: team.icon)
-						.font(.system(size: 14))
-						.foregroundStyle(Color(hex: team.color) ?? .blue)
-
-					Text(team.name)
-						.font(.subheadline)
-						.fontWeight(.medium)
-						.foregroundStyle(.primary)
-				} else {
-					Image(systemName: "square.stack.3d.up")
-						.font(.system(size: 14))
-						.foregroundStyle(.secondary)
-
-					Text("All Teams")
-						.font(.subheadline)
-						.fontWeight(.medium)
-						.foregroundStyle(.primary)
-				}
-
-				Spacer()
-
-				Image(systemName: "chevron.up.chevron.down")
-					.font(.system(size: 10))
-					.foregroundStyle(.secondary)
-			}
-			.padding(.horizontal, 12)
-			.padding(.vertical, 8)
-			.background(.bar)
-			.clipShape(RoundedRectangle(cornerRadius: 8))
-		}
-		.buttonStyle(.plain)
 	}
 }
 
 #Preview {
 	SidebarView(isSidebarCollapsed: .constant(false))
 		.environment(ProjectStore())
-		.modelContainer(for: [Project.self, Issue.self, Team.self, Label.self], inMemory: true)
+		.modelContainer(for: [Project.self, Issue.self, Space.self, Label.self], inMemory: true)
 }

@@ -12,7 +12,7 @@ struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
     @Query private var items: [Item]
 	@Query private var projects: [Project]
-	@Query private var teams: [Team]
+	@Query private var spaces: [Space]
 	@State private var isInspectorVisible: Bool = false
 	@State private var isSidebarCollapsed: Bool = false
 	@State private var projectStore = ProjectStore()
@@ -52,29 +52,29 @@ struct ContentView: View {
     }
 
 	private func createSampleDataIfNeeded() {
-		// Create sample teams if they don't exist
-		let engineeringTeam: Team
-		let designTeam: Team
+		// Create sample spaces if they don't exist
+		let engineeringSpace: Space
+		let designSpace: Space
 
-		if teams.isEmpty {
-			engineeringTeam = Team(name: "Engineering", teamDescription: "Product development team", icon: "hammer.fill", color: "#007AFF")
-			designTeam = Team(name: "Design", teamDescription: "Design and UX team", icon: "paintbrush.fill", color: "#AF52DE")
+		if spaces.isEmpty {
+			engineeringSpace = Space(name: "Engineering", spaceDescription: "Product development team", icon: "hammer.fill", color: "#007AFF")
+			designSpace = Space(name: "Design", spaceDescription: "Design and UX team", icon: "paintbrush.fill", color: "#AF52DE")
 
-			modelContext.insert(engineeringTeam)
-			modelContext.insert(designTeam)
+			modelContext.insert(engineeringSpace)
+			modelContext.insert(designSpace)
 		} else {
-			// Use existing teams
-			engineeringTeam = teams.first { $0.name == "Engineering" } ?? teams[0]
-			designTeam = teams.first { $0.name == "Design" } ?? teams[0]
+			// Use existing spaces
+			engineeringSpace = spaces.first { $0.name == "Engineering" } ?? spaces[0]
+			designSpace = spaces.first { $0.name == "Design" } ?? spaces[0]
 		}
 
 		// Only create sample projects if no projects exist
 		guard projects.isEmpty else { return }
 
 		// Create sample projects
-		let websiteProject = Project(name: "Website Redesign", icon: "safari.fill", color: "#007AFF", team: engineeringTeam)
-		let mobileProject = Project(name: "Mobile App", icon: "iphone", color: "#FF9500", team: engineeringTeam)
-		let marketingProject = Project(name: "Marketing Campaign", icon: "megaphone.fill", color: "#FF2D55", team: designTeam)
+		let websiteProject = Project(name: "Website Redesign", icon: "safari.fill", color: "#007AFF", space: engineeringSpace)
+		let mobileProject = Project(name: "Mobile App", icon: "iphone", color: "#FF9500", space: engineeringSpace)
+		let marketingProject = Project(name: "Marketing Campaign", icon: "megaphone.fill", color: "#FF2D55", space: designSpace)
 
 		modelContext.insert(websiteProject)
 		modelContext.insert(mobileProject)

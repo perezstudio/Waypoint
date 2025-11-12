@@ -15,17 +15,17 @@ final class Label {
     var color: String  // Hex color code
     var icon: String?  // Optional SF Symbol name
     var createdAt: Date
-    var team: Team?
+    var space: Space?
 
     @Relationship(inverse: \Issue.labels)
     var issues: [Issue] = []
 
-    init(name: String, color: String, icon: String? = nil, team: Team? = nil) {
+    init(name: String, color: String, icon: String? = nil, space: Space? = nil) {
         self.id = UUID()
         self.name = name
         self.color = color
         self.icon = icon
-        self.team = team
+        self.space = space
         self.createdAt = Date()
     }
 }

@@ -1,5 +1,5 @@
 //
-//  Team.swift
+//  Space.swift
 //  Waypoint
 //
 //  Created by Kevin Perez on 11/12/25.
@@ -9,24 +9,24 @@ import Foundation
 import SwiftData
 
 @Model
-final class Team {
+final class Space {
     var id: UUID
     var name: String
-    var teamDescription: String?
+    var spaceDescription: String?
     var icon: String  // SF Symbol name
     var color: String  // Hex color code
     var createdAt: Date
 
-    @Relationship(deleteRule: .nullify, inverse: \Project.team)
+    @Relationship(deleteRule: .nullify, inverse: \Project.space)
     var projects: [Project] = []
 
-    @Relationship(deleteRule: .nullify, inverse: \Label.team)
+    @Relationship(deleteRule: .nullify, inverse: \Label.space)
     var labels: [Label] = []
 
-    init(name: String, teamDescription: String? = nil, icon: String = "person.3.fill", color: String = "#007AFF") {
+    init(name: String, spaceDescription: String? = nil, icon: String = "person.3.fill", color: String = "#007AFF") {
         self.id = UUID()
         self.name = name
-        self.teamDescription = teamDescription
+        self.spaceDescription = spaceDescription
         self.icon = icon
         self.color = color
         self.createdAt = Date()

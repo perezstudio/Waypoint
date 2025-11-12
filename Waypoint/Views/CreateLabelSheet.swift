@@ -11,23 +11,23 @@ import SwiftData
 struct CreateLabelSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
-	@Query private var teams: [Team]
+	@Query private var spaces: [Space]
 
-	let preselectedTeam: Team?
+	let preselectedSpace: Space?
 
 	@State private var name: String = ""
 	@State private var selectedIcon: String? = nil
 	@State private var selectedColor: String = "#007AFF"
-	@State private var selectedTeam: Team?
+	@State private var selectedSpace: Space?
 	@FocusState private var focusedField: Field?
 
 	enum Field: Hashable {
 		case name
 	}
 
-	init(preselectedTeam: Team? = nil) {
-		self.preselectedTeam = preselectedTeam
-		_selectedTeam = State(initialValue: preselectedTeam)
+	init(preselectedSpace: Space? = nil) {
+		self.preselectedSpace = preselectedSpace
+		_selectedSpace = State(initialValue: preselectedSpace)
 	}
 
 	// Common label icons
@@ -108,21 +108,21 @@ struct CreateLabelSheet: View {
 					}
 				}
 
-				Section("Team") {
-					if teams.isEmpty {
-						Text("No teams available. Create a team first.")
+				Section("Space") {
+					if spaces.isEmpty {
+						Text("No spaces available. Create a space first.")
 							.font(.caption)
 							.foregroundStyle(.secondary)
 					} else {
-						Picker("Team", selection: $selectedTeam) {
-							Text("Select a team").tag(nil as Team?)
-							ForEach(teams) { team in
+						Picker("Space", selection: $selectedSpace) {
+							Text("Select a space").tag(nil as Space?)
+							ForEach(spaces) { space in
 								HStack {
-									Image(systemName: team.icon)
-										.foregroundStyle(Color(hex: team.color) ?? .blue)
-									Text(team.name)
+									Image(systemName: space.icon)
+										.foregroundStyle(Color(hex: space.color) ?? .blue)
+									Text(space.name)
 								}
-								.tag(team as Team?)
+								.tag(space as Space?)
 							}
 						}
 					}
@@ -164,7 +164,7 @@ struct CreateLabelSheet: View {
 						createLabel()
 					}
 					.keyboardShortcut(.defaultAction)
-					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedTeam == nil)
+					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSpace == nil)
 				}
 			}
 			.onAppear {
@@ -179,7 +179,7 @@ struct CreateLabelSheet: View {
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
 			color: selectedColor,
 			icon: selectedIcon,
-			team: selectedTeam
+			space: selectedSpace
 		)
 
 		modelContext.insert(newLabel)
@@ -189,6 +189,6 @@ struct CreateLabelSheet: View {
 }
 
 #Preview {
-	CreateLabelSheet(preselectedTeam: nil)
-		.modelContainer(for: [Label.self, Team.self], inMemory: true)
+	CreateLabelSheet(preselectedSpace: nil)
+		.modelContainer(for: [Label.self, Space.self], inMemory: true)
 }

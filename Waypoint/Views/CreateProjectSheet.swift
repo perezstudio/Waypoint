@@ -11,18 +11,18 @@ import SwiftData
 struct CreateProjectSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
-	@Query private var teams: [Team]
+	@Query private var spaces: [Space]
 
-	let preselectedTeam: Team?
+	let preselectedSpace: Space?
 
 	@State private var name: String = ""
 	@State private var description: String = ""
 	@State private var selectedIcon: String = "folder.fill"
 	@State private var selectedColor: String = "#007AFF"
-	@State private var selectedTeam: Team?
+	@State private var selectedSpace: Space?
 	@State private var highlightedIconIndex: Int = 0
 	@State private var highlightedColorIndex: Int = 0
-	@State private var showingTeamPicker: Bool = false
+	@State private var showingSpacePicker: Bool = false
 	@FocusState private var focusedField: Field?
 
 	enum Field: Hashable {
@@ -30,12 +30,12 @@ struct CreateProjectSheet: View {
 		case description
 		case iconGrid
 		case colorGrid
-		case teamPicker
+		case spacePicker
 	}
 
-	init(preselectedTeam: Team? = nil) {
-		self.preselectedTeam = preselectedTeam
-		_selectedTeam = State(initialValue: preselectedTeam)
+	init(preselectedSpace: Space? = nil) {
+		self.preselectedSpace = preselectedSpace
+		_selectedSpace = State(initialValue: preselectedSpace)
 	}
 
 	// Common project icons
@@ -83,38 +83,38 @@ struct CreateProjectSheet: View {
 					colorGridSection
 						.id(Field.colorGrid)
 
-					Section("Team") {
-					if teams.isEmpty {
-						Text("No teams available. Create a team first.")
+					Section("Space") {
+					if spaces.isEmpty {
+						Text("No spaces available. Create a space first.")
 							.font(.caption)
 							.foregroundStyle(.secondary)
 					} else {
-						CustomTeamPickerButton(
-							selectedTeam: $selectedTeam,
-							teams: teams,
-							isFocused: focusedField == .teamPicker,
-							showingPopover: $showingTeamPicker
+						CustomSpacePickerButton(
+							selectedSpace: $selectedSpace,
+							spaces: spaces,
+							isFocused: focusedField == .spacePicker,
+							showingPopover: $showingSpacePicker
 						)
 						.focusable()
-						.focused($focusedField, equals: .teamPicker)
+						.focused($focusedField, equals: .spacePicker)
 						.focusEffectDisabled()
 						.onKeyPress(.return) {
-							if focusedField == .teamPicker {
-								showingTeamPicker.toggle()
+							if focusedField == .spacePicker {
+								showingSpacePicker.toggle()
 								return .handled
 							}
 							return .ignored
 						}
 						.onKeyPress(.space) {
-							if focusedField == .teamPicker {
-								showingTeamPicker.toggle()
+							if focusedField == .spacePicker {
+								showingSpacePicker.toggle()
 								return .handled
 							}
 							return .ignored
 						}
 					}
 				}
-				.id(Field.teamPicker)
+				.id(Field.spacePicker)
 				}
 				.formStyle(.grouped)
 				.onChange(of: focusedField) { _, newField in
@@ -139,7 +139,7 @@ struct CreateProjectSheet: View {
 						createProject()
 					}
 					.keyboardShortcut(.defaultAction)
-					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedTeam == nil)
+					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSpace == nil)
 				}
 			}
 			.onAppear {
@@ -331,7 +331,7 @@ struct CreateProjectSheet: View {
 	}
 
 	private func handleTab(isShift: Bool) {
-		let fields: [Field] = [.name, .description, .iconGrid, .colorGrid, .teamPicker]
+		let fields: [Field] = [.name, .description, .iconGrid, .colorGrid, .spacePicker]
 		guard let currentField = focusedField,
 			  let currentIndex = fields.firstIndex(of: currentField) else {
 			focusedField = fields.first
@@ -361,7 +361,7 @@ struct CreateProjectSheet: View {
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
 			icon: selectedIcon,
 			color: selectedColor,
-			team: selectedTeam
+			space: selectedSpace
 		)
 
 		if !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
@@ -374,22 +374,22 @@ struct CreateProjectSheet: View {
 	}
 }
 
-// Custom Team Picker Button with Keyboard Navigation
-struct CustomTeamPickerButton: View {
-	@Binding var selectedTeam: Team?
-	let teams: [Team]
+// Custom Space Picker Button with Keyboard Navigation
+struct CustomSpacePickerButton: View {
+	@Binding var selectedSpace: Space?
+	let spaces: [Space]
 	let isFocused: Bool
 	@Binding var showingPopover: Bool
 
 	var body: some View {
 		HStack(spacing: 8) {
-			if let team = selectedTeam {
-				Image(systemName: team.icon)
-					.foregroundStyle(Color(hex: team.color) ?? .blue)
-				Text(team.name)
+			if let space = selectedSpace {
+				Image(systemName: space.icon)
+					.foregroundStyle(Color(hex: space.color) ?? .blue)
+				Text(space.name)
 					.foregroundStyle(.primary)
 			} else {
-				Text("Select a team")
+				Text("Select a space")
 					.foregroundStyle(.secondary)
 			}
 
@@ -412,17 +412,17 @@ struct CustomTeamPickerButton: View {
 			showingPopover.toggle()
 		}
 		.popover(isPresented: $showingPopover, arrowEdge: .bottom) {
-			TeamPickerPopover(selectedTeam: $selectedTeam, teams: teams) {
+			SpacePickerPopover(selectedSpace: $selectedSpace, spaces: spaces) {
 				showingPopover = false
 			}
 		}
 	}
 }
 
-// Team Picker Popover with Keyboard Navigation
-struct TeamPickerPopover: View {
-	@Binding var selectedTeam: Team?
-	let teams: [Team]
+// Space Picker Popover with Keyboard Navigation
+struct SpacePickerPopover: View {
+	@Binding var selectedSpace: Space?
+	let spaces: [Space]
 	let onDismiss: () -> Void
 
 	@State private var selectedIndex: Int = 0
@@ -430,24 +430,24 @@ struct TeamPickerPopover: View {
 
 	var body: some View {
 		VStack(spacing: 4) {
-			ForEach(Array(teams.enumerated()), id: \.element.id) { index, team in
+			ForEach(Array(spaces.enumerated()), id: \.element.id) { index, space in
 				Button(action: {
-					selectedTeam = team
+					selectedSpace = space
 					onDismiss()
 				}) {
 					HStack(spacing: 12) {
-						Image(systemName: team.icon)
+						Image(systemName: space.icon)
 							.font(.system(size: 14))
-							.foregroundStyle(Color(hex: team.color) ?? .blue)
+							.foregroundStyle(Color(hex: space.color) ?? .blue)
 							.frame(width: 16)
 
-						Text(team.name)
+						Text(space.name)
 							.font(.subheadline)
 							.foregroundStyle(.primary)
 
 						Spacer()
 
-						if selectedTeam?.id == team.id {
+						if selectedSpace?.id == space.id {
 							Image(systemName: "checkmark")
 								.font(.caption)
 								.foregroundStyle(.secondary)
@@ -475,8 +475,8 @@ struct TeamPickerPopover: View {
 		.focusEffectDisabled()
 		.onAppear {
 			// Auto-focus and find current selection
-			if let currentTeam = selectedTeam,
-			   let index = teams.firstIndex(where: { $0.id == currentTeam.id }) {
+			if let currentSpace = selectedSpace,
+			   let index = spaces.firstIndex(where: { $0.id == currentSpace.id }) {
 				selectedIndex = index
 			}
 			DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -484,16 +484,16 @@ struct TeamPickerPopover: View {
 			}
 		}
 		.onKeyPress(.upArrow) {
-			selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : teams.count - 1
+			selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : spaces.count - 1
 			return .handled
 		}
 		.onKeyPress(.downArrow) {
-			selectedIndex = selectedIndex < teams.count - 1 ? selectedIndex + 1 : 0
+			selectedIndex = selectedIndex < spaces.count - 1 ? selectedIndex + 1 : 0
 			return .handled
 		}
 		.onKeyPress(.return) {
-			if selectedIndex < teams.count {
-				selectedTeam = teams[selectedIndex]
+			if selectedIndex < spaces.count {
+				selectedSpace = spaces[selectedIndex]
 				onDismiss()
 			}
 			return .handled
@@ -503,14 +503,14 @@ struct TeamPickerPopover: View {
 			return .handled
 		}
 		.onKeyPress(characters: .decimalDigits) { press in
-			if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < teams.count {
+			if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < spaces.count {
 				selectedIndex = digit - 1
-				selectedTeam = teams[digit - 1]
+				selectedSpace = spaces[digit - 1]
 				onDismiss()
 				return .handled
-			} else if press.characters == "0" && teams.count >= 10 {
+			} else if press.characters == "0" && spaces.count >= 10 {
 				selectedIndex = 9
-				selectedTeam = teams[9]
+				selectedSpace = spaces[9]
 				onDismiss()
 				return .handled
 			}
@@ -519,24 +519,7 @@ struct TeamPickerPopover: View {
 	}
 }
 
-// Helper extension for hex colors
-extension Color {
-	init?(hex: String) {
-		let hex = hex.trimmingCharacters(in: CharacterSet(charactersIn: "#"))
-		guard hex.count == 6 else { return nil }
-
-		var rgb: UInt64 = 0
-		Scanner(string: hex).scanHexInt64(&rgb)
-
-		let r = Double((rgb & 0xFF0000) >> 16) / 255.0
-		let g = Double((rgb & 0x00FF00) >> 8) / 255.0
-		let b = Double(rgb & 0x0000FF) / 255.0
-
-		self.init(red: r, green: g, blue: b)
-	}
-}
-
 #Preview {
-	CreateProjectSheet(preselectedTeam: nil)
-		.modelContainer(for: [Project.self, Team.self], inMemory: true)
+	CreateProjectSheet(preselectedSpace: nil)
+		.modelContainer(for: [Project.self, Space.self], inMemory: true)
 }

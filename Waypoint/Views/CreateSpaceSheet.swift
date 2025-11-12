@@ -1,5 +1,5 @@
 //
-//  CreateTeamSheet.swift
+//  CreateSpaceSheet.swift
 //  Waypoint
 //
 //  Created by Kevin Perez on 11/12/25.
@@ -8,7 +8,7 @@
 import SwiftUI
 import SwiftData
 
-struct CreateTeamSheet: View {
+struct CreateSpaceSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
 
@@ -23,7 +23,7 @@ struct CreateTeamSheet: View {
 		case description
 	}
 
-	// Common team icons
+	// Common space icons
 	private let commonIcons = [
 		"person.3.fill", "person.2.fill", "person.fill",
 		"figure.2", "figure.walk", "figure.wave",
@@ -44,7 +44,7 @@ struct CreateTeamSheet: View {
 		NavigationStack {
 			Form {
 				Section {
-					TextField("Team Name", text: $name, axis: .vertical)
+					TextField("Space Name", text: $name, axis: .vertical)
 						.textFieldStyle(.plain)
 						.font(.title3)
 						.fontWeight(.semibold)
@@ -102,7 +102,7 @@ struct CreateTeamSheet: View {
 				}
 			}
 			.formStyle(.grouped)
-			.navigationTitle("New Team")
+			.navigationTitle("New Space")
 			.toolbar {
 				ToolbarItem(placement: .cancellationAction) {
 					Button("Cancel") {
@@ -113,7 +113,7 @@ struct CreateTeamSheet: View {
 
 				ToolbarItem(placement: .confirmationAction) {
 					Button("Create") {
-						createTeam()
+						createSpace()
 					}
 					.keyboardShortcut(.defaultAction)
 					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -126,21 +126,21 @@ struct CreateTeamSheet: View {
 		.frame(width: 500, height: 600)
 	}
 
-	private func createTeam() {
-		let newTeam = Team(
+	private func createSpace() {
+		let newSpace = Space(
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-			teamDescription: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
+			spaceDescription: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
 			icon: selectedIcon,
 			color: selectedColor
 		)
 
-		modelContext.insert(newTeam)
+		modelContext.insert(newSpace)
 
 		dismiss()
 	}
 }
 
 #Preview {
-	CreateTeamSheet()
-		.modelContainer(for: [Team.self], inMemory: true)
+	CreateSpaceSheet()
+		.modelContainer(for: [Space.self], inMemory: true)
 }

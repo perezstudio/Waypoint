@@ -11,14 +11,14 @@ enum CreationOption: CaseIterable {
     case project
     case issue
     case label
-    case team
+    case space
 
     var title: String {
         switch self {
         case .project: return "New Project"
         case .issue: return "New Issue"
         case .label: return "New Label"
-        case .team: return "New Team"
+        case .space: return "New Space"
         }
     }
 
@@ -27,7 +27,7 @@ enum CreationOption: CaseIterable {
         case .project: return "folder.badge.plus"
         case .issue: return "doc.badge.plus"
         case .label: return "tag"
-        case .team: return "person.3.fill"
+        case .space: return "person.3.fill"
         }
     }
 
@@ -36,7 +36,7 @@ enum CreationOption: CaseIterable {
         case .project: return "1"
         case .issue: return "2"
         case .label: return "3"
-        case .team: return "4"
+        case .space: return "4"
         }
     }
 }
