@@ -13,39 +13,43 @@ struct MenuItemView: View {
 	var label: String = "Menu Item"
 	var count: Int? = nil
 	var isSelected: Bool = false
+	var action: () -> Void = {}
 
 	@State private var isHovered: Bool = false
 
 	var body: some View {
-		HStack(spacing: 8) {
-			Image(systemName: icon)
-				.font(.system(size: 14))
-				.foregroundStyle(isSelected ? .blue : .secondary)
-				.frame(width: 16)
+		Button(action: action) {
+			HStack(spacing: 8) {
+				Image(systemName: icon)
+					.font(.system(size: 14))
+					.foregroundStyle(isSelected ? .blue : .secondary)
+					.frame(width: 16)
 
-			Text(label)
-				.font(.subheadline)
-				.foregroundStyle(isSelected ? .primary : .primary)
+				Text(label)
+					.font(.subheadline)
+					.foregroundStyle(isSelected ? .primary : .primary)
 
-			Spacer()
+				Spacer()
 
-			if let count = count {
-				Text("\(count)")
-					.font(.caption)
-					.foregroundStyle(.secondary)
-					.padding(.horizontal, 6)
-					.padding(.vertical, 2)
-					.background(.tertiary.opacity(0.5))
-					.clipShape(RoundedRectangle(cornerRadius: 4))
+				if let count = count {
+					Text("\(count)")
+						.font(.caption)
+						.foregroundStyle(.secondary)
+						.padding(.horizontal, 6)
+						.padding(.vertical, 2)
+						.background(.tertiary.opacity(0.5))
+						.clipShape(RoundedRectangle(cornerRadius: 4))
+				}
 			}
+			.padding(.horizontal, 8)
+			.padding(.vertical, 6)
+			.background(
+				RoundedRectangle(cornerRadius: 6)
+					.fill(isSelected ? .blue.opacity(0.1) : (isHovered ? .primary.opacity(0.05) : .clear))
+			)
+			.contentShape(Rectangle())
 		}
-		.padding(.horizontal, 8)
-		.padding(.vertical, 6)
-		.background(
-			RoundedRectangle(cornerRadius: 6)
-				.fill(isSelected ? .blue.opacity(0.1) : (isHovered ? .primary.opacity(0.05) : .clear))
-		)
-		.contentShape(Rectangle())
+		.buttonStyle(.plain)
 		.onHover { hovering in
 			isHovered = hovering
 		}

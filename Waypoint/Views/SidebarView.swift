@@ -11,6 +11,8 @@ import SwiftData
 struct SidebarView: View {
 	@Binding var isSidebarCollapsed: Bool
 	@State private var isScrolling: Bool = false
+	@Environment(ProjectStore.self) private var projectStore
+	@Query private var projects: [Project]
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 0) {
@@ -31,10 +33,40 @@ struct SidebarView: View {
 				VStack(alignment: .leading, spacing: 20) {
 					// Top navigation section
 					VStack(alignment: .leading, spacing: 4) {
-						MenuItemView(icon: "inbox.fill", label: "Inbox", count: 12, isSelected: true)
-						MenuItemView(icon: "calendar", label: "Today", count: 5)
-						MenuItemView(icon: "calendar.badge.clock", label: "Upcoming", count: 8)
-						MenuItemView(icon: "checkmark.circle.fill", label: "Completed")
+						MenuItemView(
+							icon: "inbox.fill",
+							label: "Inbox",
+							count: 12,
+							isSelected: projectStore.selectedView == .system(.inbox),
+							action: { projectStore.selectSystemView(.inbox) }
+						)
+						MenuItemView(
+							icon: "calendar",
+							label: "Today",
+							count: 5,
+							isSelected: projectStore.selectedView == .system(.today),
+							action: { projectStore.selectSystemView(.today) }
+						)
+						MenuItemView(
+							icon: "calendar.badge.clock",
+							label: "Upcoming",
+							count: 8,
+							isSelected: projectStore.selectedView == .system(.upcoming),
+							action: { projectStore.selectSystemView(.upcoming) }
+						)
+						MenuItemView(
+							icon: "checkmark.circle.fill",
+							label: "Completed",
+							isSelected: projectStore.selectedView == .system(.completed),
+							action: { projectStore.selectSystemView(.completed) }
+						)
+						MenuItemView(
+							icon: "folder.fill",
+							label: "Projects",
+							count: projects.count,
+							isSelected: projectStore.selectedView == .system(.projects),
+							action: { projectStore.selectSystemView(.projects) }
+						)
 					}
 
 					Divider()
@@ -48,12 +80,15 @@ struct SidebarView: View {
 							.padding(.leading, 8)
 
 						VStack(alignment: .leading, spacing: 4) {
-							MenuItemView(icon: "folder.fill", label: "Website Redesign", count: 23)
-							MenuItemView(icon: "folder.fill", label: "Mobile App", count: 15)
-							MenuItemView(icon: "folder.fill", label: "Marketing Campaign", count: 8)
-							MenuItemView(icon: "folder.fill", label: "Client Portal", count: 12)
-							MenuItemView(icon: "folder.fill", label: "Documentation", count: 5)
-							MenuItemView(icon: "folder.fill", label: "Team Onboarding", count: 3)
+							ForEach(projects) { project in
+								MenuItemView(
+									icon: project.icon,
+									label: project.name,
+									count: project.issues.count,
+									isSelected: projectStore.selectedView == .project(project.id),
+									action: { projectStore.selectProject(project) }
+								)
+							}
 						}
 					}
 
@@ -112,4 +147,6 @@ struct SidebarView: View {
 
 #Preview {
 	SidebarView(isSidebarCollapsed: .constant(false))
+		.environment(ProjectStore())
+		.modelContainer(for: [Project.self, Issue.self], inMemory: true)
 }

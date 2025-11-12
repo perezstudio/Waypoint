@@ -9,10 +9,11 @@ import SwiftUI
 
 struct DetailPaneView: View {
 	@Binding var isInspectorVisible: Bool
+	@Binding var isSidebarCollapsed: Bool
 
 	var body: some View {
 		ZStack(alignment: .trailing) {
-			DetailView(isInspectorVisible: $isInspectorVisible)
+			DetailView(isInspectorVisible: $isInspectorVisible, isSidebarCollapsed: $isSidebarCollapsed)
 				.background(.bar)
 				.clipShape(RoundedRectangle(cornerRadius: 12))
 				.shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 0)
