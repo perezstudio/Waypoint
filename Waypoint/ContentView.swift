@@ -16,6 +16,7 @@ struct ContentView: View {
 	@State private var isInspectorVisible: Bool = false
 	@State private var isSidebarCollapsed: Bool = false
 	@State private var projectStore = ProjectStore()
+	@State private var showingCreateIssue: Bool = false
 
 	var body: some View {
 		SplitView(
@@ -49,6 +50,14 @@ struct ContentView: View {
 			// Position traffic lights - leave them in default position for now
 			// We'll adjust this based on sidebar state later
 		}
+		.sheet(isPresented: $showingCreateIssue) {
+			CreateIssueSheet()
+		}
+		.background(
+			Button("") { showingCreateIssue = true }
+				.keyboardShortcut("i", modifiers: .command)
+				.hidden()
+		)
     }
 
 	private func createSampleDataIfNeeded() {
