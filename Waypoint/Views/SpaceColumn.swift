@@ -168,6 +168,17 @@ struct SpaceColumn: View {
 					.padding(.bottom, 8)
 				}
 
+				// All Projects Tab (only show if we have bookmarks expanded)
+				if showBookmarks {
+					MenuItemView(
+						icon: "folder.fill",
+						label: "All Projects",
+						count: spaceProjects.count,
+						isSelected: projectStore.selectedView == .system(.projects),
+						action: { projectStore.selectSystemView(.projects) }
+					)
+				}
+
 				// Favorite Projects Section (collapsible)
 				if showBookmarks {
 					VStack(alignment: .leading, spacing: 8) {
