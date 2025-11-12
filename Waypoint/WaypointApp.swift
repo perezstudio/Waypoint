@@ -26,7 +26,9 @@ struct WaypointApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+				.containerBackground(.thinMaterial, for: .window)
         }
+		.windowStyle(.hiddenTitleBar)
         .modelContainer(sharedModelContainer)
     }
 }
