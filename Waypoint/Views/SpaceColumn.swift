@@ -31,6 +31,12 @@ struct SpaceColumn: View {
 		return tags.filter { $0.space?.id == space.id }
 	}
 
+	// Get current day for calendar icon
+	private var todayCalendarIcon: String {
+		let day = Calendar.current.component(.day, from: Date())
+		return "\(day).circle.fill"
+	}
+
 	var body: some View {
 		ScrollView(.vertical, showsIndicators: true) {
 			VStack(alignment: .leading, spacing: 20) {
@@ -41,13 +47,15 @@ struct SpaceColumn: View {
 						label: "Inbox",
 						count: 12,
 						isSelected: projectStore.selectedView == .system(.inbox),
+						iconColor: .blue,
 						action: { projectStore.selectSystemView(.inbox) }
 					)
 					MenuItemView(
-						icon: "calendar",
+						icon: todayCalendarIcon,
 						label: "Today",
 						count: 5,
 						isSelected: projectStore.selectedView == .system(.today),
+						iconColor: .yellow,
 						action: { projectStore.selectSystemView(.today) }
 					)
 					MenuItemView(
@@ -55,12 +63,14 @@ struct SpaceColumn: View {
 						label: "Upcoming",
 						count: 8,
 						isSelected: projectStore.selectedView == .system(.upcoming),
+						iconColor: .red,
 						action: { projectStore.selectSystemView(.upcoming) }
 					)
 					MenuItemView(
 						icon: "checkmark.circle.fill",
 						label: "Completed",
 						isSelected: projectStore.selectedView == .system(.completed),
+						iconColor: .green,
 						action: { projectStore.selectSystemView(.completed) }
 					)
 				}
@@ -168,15 +178,25 @@ struct SpaceColumn: View {
 					.padding(.bottom, 8)
 				}
 
-				// All Projects Tab (only show if we have bookmarks expanded)
+				// All Projects and All Issues grouped section
 				if showBookmarks {
-					MenuItemView(
-						icon: "folder.fill",
-						label: "All Projects",
-						count: spaceProjects.count,
-						isSelected: projectStore.selectedView == .system(.projects),
-						action: { projectStore.selectSystemView(.projects) }
-					)
+					VStack(alignment: .leading, spacing: 4) {
+						MenuItemView(
+							icon: "folder.fill",
+							label: "All Projects",
+							count: spaceProjects.count,
+							isSelected: projectStore.selectedView == .system(.projects),
+							action: { projectStore.selectSystemView(.projects) }
+						)
+
+						MenuItemView(
+							icon: "list.bullet",
+							label: "All Issues",
+							count: spaceProjects.reduce(0) { $0 + $1.issues.count },
+							isSelected: false,
+							action: { /* TODO: Add All Issues view */ }
+						)
+					}
 				}
 
 				// Favorite Projects Section (collapsible)

@@ -13,6 +13,7 @@ struct MenuItemView: View {
 	var label: String = "Menu Item"
 	var count: Int? = nil
 	var isSelected: Bool = false
+	var iconColor: Color? = nil  // Custom icon color when selected
 	var action: () -> Void = {}
 
 	@State private var isHovered: Bool = false
@@ -22,7 +23,7 @@ struct MenuItemView: View {
 			HStack(spacing: 8) {
 				Image(systemName: icon)
 					.frame(width: 18, height: 18)
-					.foregroundStyle(isSelected ? .blue : .secondary)
+					.foregroundStyle(isSelected ? (iconColor ?? .blue) : .secondary)
 
 				Text(label)
 					.fontWeight(isSelected ? .medium : .regular)
