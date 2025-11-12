@@ -13,6 +13,7 @@ struct SidebarView: View {
 	@State private var isScrolling: Bool = false
 	@Environment(ProjectStore.self) private var projectStore
 	@Query private var projects: [Project]
+	@Query private var teams: [Team]
 
 	// Creation menu and sheets state
 	@State private var showingCreationMenu = false
@@ -20,6 +21,17 @@ struct SidebarView: View {
 	@State private var showingCreateIssue = false
 	@State private var showingCreateLabel = false
 	@State private var showingCreateTeam = false
+
+	// Team selection
+	@State private var selectedTeam: Team?
+
+	// Filtered projects based on selected team
+	private var filteredProjects: [Project] {
+		guard let selectedTeam = selectedTeam else {
+			return projects
+		}
+		return projects.filter { $0.team?.id == selectedTeam.id }
+	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 0) {
@@ -34,6 +46,11 @@ struct SidebarView: View {
 			.padding(.horizontal, 16)
 			.padding(.top, 12)
 			.padding(.bottom, 20)
+
+			// Team picker
+			TeamPicker(selectedTeam: $selectedTeam, teams: teams)
+				.padding(.horizontal, 16)
+				.padding(.bottom, 16)
 
 			// Scrollable menu content
 			ScrollView {
@@ -81,13 +98,21 @@ struct SidebarView: View {
 
 					// Favorite Projects section
 					VStack(alignment: .leading, spacing: 8) {
-						Text("Favorite Projects")
-							.font(.caption)
-							.foregroundStyle(.secondary)
-							.padding(.leading, 8)
+						HStack {
+							Text("Favorite Projects")
+								.font(.caption)
+								.foregroundStyle(.secondary)
+
+							if selectedTeam != nil {
+								Text("(\(filteredProjects.count))")
+									.font(.caption2)
+									.foregroundStyle(.tertiary)
+							}
+						}
+						.padding(.leading, 8)
 
 						VStack(alignment: .leading, spacing: 4) {
-							ForEach(projects) { project in
+							ForEach(filteredProjects) { project in
 								MenuItemView(
 									icon: project.icon,
 									label: project.name,
@@ -95,6 +120,14 @@ struct SidebarView: View {
 									isSelected: projectStore.selectedView == .project(project.id),
 									action: { projectStore.selectProject(project) }
 								)
+							}
+
+							if filteredProjects.isEmpty && selectedTeam != nil {
+								Text("No projects in this team")
+									.font(.caption)
+									.foregroundStyle(.tertiary)
+									.frame(maxWidth: .infinity, alignment: .center)
+									.padding(.vertical, 12)
 							}
 						}
 					}
@@ -183,8 +216,74 @@ struct SidebarView: View {
 	}
 }
 
+// Team Picker Component
+struct TeamPicker: View {
+	@Binding var selectedTeam: Team?
+	let teams: [Team]
+
+	var body: some View {
+		Menu {
+			Button {
+				selectedTeam = nil
+			} label: {
+				HStack {
+					Image(systemName: "square.stack.3d.up")
+					Text("All Teams")
+				}
+			}
+
+			Divider()
+
+			ForEach(teams) { team in
+				Button {
+					selectedTeam = team
+				} label: {
+					HStack {
+						Image(systemName: team.icon)
+							.foregroundStyle(Color(hex: team.color) ?? .blue)
+						Text(team.name)
+					}
+				}
+			}
+		} label: {
+			HStack(spacing: 8) {
+				if let team = selectedTeam {
+					Image(systemName: team.icon)
+						.font(.system(size: 14))
+						.foregroundStyle(Color(hex: team.color) ?? .blue)
+
+					Text(team.name)
+						.font(.subheadline)
+						.fontWeight(.medium)
+						.foregroundStyle(.primary)
+				} else {
+					Image(systemName: "square.stack.3d.up")
+						.font(.system(size: 14))
+						.foregroundStyle(.secondary)
+
+					Text("All Teams")
+						.font(.subheadline)
+						.fontWeight(.medium)
+						.foregroundStyle(.primary)
+				}
+
+				Spacer()
+
+				Image(systemName: "chevron.up.chevron.down")
+					.font(.system(size: 10))
+					.foregroundStyle(.secondary)
+			}
+			.padding(.horizontal, 12)
+			.padding(.vertical, 8)
+			.background(.bar)
+			.clipShape(RoundedRectangle(cornerRadius: 8))
+		}
+		.buttonStyle(.plain)
+	}
+}
+
 #Preview {
 	SidebarView(isSidebarCollapsed: .constant(false))
 		.environment(ProjectStore())
-		.modelContainer(for: [Project.self, Issue.self], inMemory: true)
+		.modelContainer(for: [Project.self, Issue.self, Team.self], inMemory: true)
 }
