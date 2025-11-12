@@ -19,7 +19,7 @@ struct DetailView: View {
 		switch projectStore.selectedView {
 		case .system(let systemView):
 			switch systemView {
-			case .inbox: return "inbox.fill"
+			case .inbox: return "tray.fill"
 			case .today: return "calendar"
 			case .upcoming: return "calendar.badge.clock"
 			case .completed: return "checkmark.circle.fill"

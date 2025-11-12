@@ -58,7 +58,7 @@ struct MenuItemView: View {
 
 #Preview {
 	VStack(alignment: .leading, spacing: 8) {
-		MenuItemView(icon: "inbox.fill", label: "Inbox", count: 12, isSelected: true)
+		MenuItemView(icon: "tray.fill", label: "Inbox", count: 12, isSelected: true)
 		MenuItemView(icon: "calendar", label: "Today", count: 5)
 		MenuItemView(icon: "star.fill", label: "Important", count: 3)
 		MenuItemView(icon: "folder.fill", label: "Project Alpha")

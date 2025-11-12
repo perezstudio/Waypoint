@@ -11,14 +11,23 @@ import SwiftData
 struct CreateLabelSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
+	@Query private var teams: [Team]
+
+	let preselectedTeam: Team?
 
 	@State private var name: String = ""
 	@State private var selectedIcon: String? = nil
 	@State private var selectedColor: String = "#007AFF"
+	@State private var selectedTeam: Team?
 	@FocusState private var focusedField: Field?
 
 	enum Field: Hashable {
 		case name
+	}
+
+	init(preselectedTeam: Team? = nil) {
+		self.preselectedTeam = preselectedTeam
+		_selectedTeam = State(initialValue: preselectedTeam)
 	}
 
 	// Common label icons
@@ -99,6 +108,26 @@ struct CreateLabelSheet: View {
 					}
 				}
 
+				Section("Team") {
+					if teams.isEmpty {
+						Text("No teams available. Create a team first.")
+							.font(.caption)
+							.foregroundStyle(.secondary)
+					} else {
+						Picker("Team", selection: $selectedTeam) {
+							Text("Select a team").tag(nil as Team?)
+							ForEach(teams) { team in
+								HStack {
+									Image(systemName: team.icon)
+										.foregroundStyle(Color(hex: team.color) ?? .blue)
+									Text(team.name)
+								}
+								.tag(team as Team?)
+							}
+						}
+					}
+				}
+
 				// Preview
 				Section("Preview") {
 					HStack(spacing: 8) {
@@ -135,7 +164,7 @@ struct CreateLabelSheet: View {
 						createLabel()
 					}
 					.keyboardShortcut(.defaultAction)
-					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedTeam == nil)
 				}
 			}
 			.onAppear {
@@ -149,7 +178,8 @@ struct CreateLabelSheet: View {
 		let newLabel = Label(
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
 			color: selectedColor,
-			icon: selectedIcon
+			icon: selectedIcon,
+			team: selectedTeam
 		)
 
 		modelContext.insert(newLabel)
@@ -159,6 +189,6 @@ struct CreateLabelSheet: View {
 }
 
 #Preview {
-	CreateLabelSheet()
-		.modelContainer(for: [Label.self], inMemory: true)
+	CreateLabelSheet(preselectedTeam: nil)
+		.modelContainer(for: [Label.self, Team.self], inMemory: true)
 }

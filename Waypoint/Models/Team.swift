@@ -20,6 +20,9 @@ final class Team {
     @Relationship(deleteRule: .nullify, inverse: \Project.team)
     var projects: [Project] = []
 
+    @Relationship(deleteRule: .nullify, inverse: \Label.team)
+    var labels: [Label] = []
+
     init(name: String, teamDescription: String? = nil, icon: String = "person.3.fill", color: String = "#007AFF") {
         self.id = UUID()
         self.name = name

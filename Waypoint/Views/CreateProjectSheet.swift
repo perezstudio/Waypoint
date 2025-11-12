@@ -13,6 +13,8 @@ struct CreateProjectSheet: View {
 	@Environment(\.modelContext) private var modelContext
 	@Query private var teams: [Team]
 
+	let preselectedTeam: Team?
+
 	@State private var name: String = ""
 	@State private var description: String = ""
 	@State private var selectedIcon: String = "folder.fill"
@@ -23,6 +25,11 @@ struct CreateProjectSheet: View {
 	enum Field: Hashable {
 		case name
 		case description
+	}
+
+	init(preselectedTeam: Team? = nil) {
+		self.preselectedTeam = preselectedTeam
+		_selectedTeam = State(initialValue: preselectedTeam)
 	}
 
 	// Common project icons
@@ -103,10 +110,14 @@ struct CreateProjectSheet: View {
 					}
 				}
 
-				if !teams.isEmpty {
-					Section("Team") {
+				Section("Team") {
+					if teams.isEmpty {
+						Text("No teams available. Create a team first.")
+							.font(.caption)
+							.foregroundStyle(.secondary)
+					} else {
 						Picker("Team", selection: $selectedTeam) {
-							Text("None").tag(nil as Team?)
+							Text("Select a team").tag(nil as Team?)
 							ForEach(teams) { team in
 								HStack {
 									Image(systemName: team.icon)
@@ -134,7 +145,7 @@ struct CreateProjectSheet: View {
 						createProject()
 					}
 					.keyboardShortcut(.defaultAction)
-					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedTeam == nil)
 				}
 			}
 			.onAppear {
@@ -180,6 +191,6 @@ extension Color {
 }
 
 #Preview {
-	CreateProjectSheet()
+	CreateProjectSheet(preselectedTeam: nil)
 		.modelContainer(for: [Project.self, Team.self], inMemory: true)
 }

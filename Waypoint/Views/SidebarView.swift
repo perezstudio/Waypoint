@@ -14,6 +14,7 @@ struct SidebarView: View {
 	@Environment(ProjectStore.self) private var projectStore
 	@Query private var projects: [Project]
 	@Query private var teams: [Team]
+	@Query private var labels: [Label]
 
 	// Creation menu and sheets state
 	@State private var showingCreationMenu = false
@@ -31,6 +32,14 @@ struct SidebarView: View {
 			return projects
 		}
 		return projects.filter { $0.team?.id == selectedTeam.id }
+	}
+
+	// Filtered labels based on selected team
+	private var filteredLabels: [Label] {
+		guard let selectedTeam = selectedTeam else {
+			return labels
+		}
+		return labels.filter { $0.team?.id == selectedTeam.id }
 	}
 
 	var body: some View {
@@ -58,7 +67,7 @@ struct SidebarView: View {
 					// Top navigation section
 					VStack(alignment: .leading, spacing: 4) {
 						MenuItemView(
-							icon: "inbox.fill",
+							icon: "tray.fill",
 							label: "Inbox",
 							count: 12,
 							isSelected: projectStore.selectedView == .system(.inbox),
@@ -137,18 +146,35 @@ struct SidebarView: View {
 
 					// Favorite Labels section
 					VStack(alignment: .leading, spacing: 8) {
-						Text("Favorite Labels")
-							.font(.caption)
-							.foregroundStyle(.secondary)
-							.padding(.leading, 8)
+						HStack {
+							Text("Favorite Labels")
+								.font(.caption)
+								.foregroundStyle(.secondary)
+
+							if selectedTeam != nil {
+								Text("(\(filteredLabels.count))")
+									.font(.caption2)
+									.foregroundStyle(.tertiary)
+							}
+						}
+						.padding(.leading, 8)
 
 						VStack(alignment: .leading, spacing: 4) {
-							MenuItemView(icon: "tag.fill", label: "Urgent", count: 4)
-							MenuItemView(icon: "tag.fill", label: "Bug Fix", count: 7)
-							MenuItemView(icon: "tag.fill", label: "Feature", count: 12)
-							MenuItemView(icon: "tag.fill", label: "Review", count: 6)
-							MenuItemView(icon: "tag.fill", label: "Design", count: 9)
-							MenuItemView(icon: "tag.fill", label: "Research", count: 3)
+							ForEach(filteredLabels) { label in
+								MenuItemView(
+									icon: label.icon ?? "tag.fill",
+									label: label.name,
+									count: label.issues.count
+								)
+							}
+
+							if filteredLabels.isEmpty && selectedTeam != nil {
+								Text("No labels in this team")
+									.font(.caption)
+									.foregroundStyle(.tertiary)
+									.frame(maxWidth: .infinity, alignment: .center)
+									.padding(.vertical, 12)
+							}
 						}
 					}
 				}
@@ -189,13 +215,13 @@ struct SidebarView: View {
 		}
 		.frame(maxHeight: .infinity)
 		.sheet(isPresented: $showingCreateProject) {
-			CreateProjectSheet()
+			CreateProjectSheet(preselectedTeam: selectedTeam)
 		}
 		.sheet(isPresented: $showingCreateIssue) {
 			CreateIssueSheet()
 		}
 		.sheet(isPresented: $showingCreateLabel) {
-			CreateLabelSheet()
+			CreateLabelSheet(preselectedTeam: selectedTeam)
 		}
 		.sheet(isPresented: $showingCreateTeam) {
 			CreateTeamSheet()
@@ -285,5 +311,5 @@ struct TeamPicker: View {
 #Preview {
 	SidebarView(isSidebarCollapsed: .constant(false))
 		.environment(ProjectStore())
-		.modelContainer(for: [Project.self, Issue.self, Team.self], inMemory: true)
+		.modelContainer(for: [Project.self, Issue.self, Team.self, Label.self], inMemory: true)
 }
