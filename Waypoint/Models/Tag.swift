@@ -1,5 +1,5 @@
 //
-//  Label.swift
+//  Tag.swift
 //  Waypoint
 //
 //  Created by Kevin Perez on 11/12/25.
@@ -9,7 +9,7 @@ import Foundation
 import SwiftData
 
 @Model
-final class Label {
+final class Tag {
     var id: UUID
     var name: String
     var color: String  // Hex color code
@@ -17,7 +17,7 @@ final class Label {
     var createdAt: Date
     var space: Space?
 
-    @Relationship(inverse: \Issue.labels)
+    @Relationship(inverse: \Issue.tags)
     var issues: [Issue] = []
 
     init(name: String, color: String, icon: String? = nil, space: Space? = nil) {

@@ -1,5 +1,5 @@
 //
-//  CreateLabelSheet.swift
+//  CreateTagSheet.swift
 //  Waypoint
 //
 //  Created by Kevin Perez on 11/12/25.
@@ -8,7 +8,7 @@
 import SwiftUI
 import SwiftData
 
-struct CreateLabelSheet: View {
+struct CreateTagSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
 	@Query private var spaces: [Space]
@@ -30,7 +30,7 @@ struct CreateLabelSheet: View {
 		_selectedSpace = State(initialValue: preselectedSpace)
 	}
 
-	// Common label icons
+	// Common tag icons
 	private let commonIcons: [String?] = [
 		nil, // No icon option
 		"tag", "tag.fill", "bookmark", "bookmark.fill",
@@ -50,7 +50,7 @@ struct CreateLabelSheet: View {
 		NavigationStack {
 			Form {
 				Section {
-					TextField("Label Name", text: $name, axis: .vertical)
+					TextField("Tag Name", text: $name, axis: .vertical)
 						.textFieldStyle(.plain)
 						.font(.title3)
 						.fontWeight(.semibold)
@@ -137,7 +137,7 @@ struct CreateLabelSheet: View {
 								.foregroundStyle(Color(hex: selectedColor) ?? .blue)
 						}
 
-						Text(name.isEmpty ? "Label Name" : name)
+						Text(name.isEmpty ? "Tag Name" : name)
 							.font(.caption)
 							.foregroundStyle(.primary)
 
@@ -150,7 +150,7 @@ struct CreateLabelSheet: View {
 				}
 			}
 			.formStyle(.grouped)
-			.navigationTitle("New Label")
+			.navigationTitle("New Tag")
 			.toolbar {
 				ToolbarItem(placement: .cancellationAction) {
 					Button("Cancel") {
@@ -161,7 +161,7 @@ struct CreateLabelSheet: View {
 
 				ToolbarItem(placement: .confirmationAction) {
 					Button("Create") {
-						createLabel()
+						createTag()
 					}
 					.keyboardShortcut(.defaultAction)
 					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSpace == nil)
@@ -174,21 +174,21 @@ struct CreateLabelSheet: View {
 		.frame(width: 500, height: 550)
 	}
 
-	private func createLabel() {
-		let newLabel = Label(
+	private func createTag() {
+		let newTag = Tag(
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
 			color: selectedColor,
 			icon: selectedIcon,
 			space: selectedSpace
 		)
 
-		modelContext.insert(newLabel)
+		modelContext.insert(newTag)
 
 		dismiss()
 	}
 }
 
 #Preview {
-	CreateLabelSheet(preselectedSpace: nil)
-		.modelContainer(for: [Label.self, Space.self], inMemory: true)
+	CreateTagSheet(preselectedSpace: nil)
+		.modelContainer(for: [Tag.self, Space.self], inMemory: true)
 }

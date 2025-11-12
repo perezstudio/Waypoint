@@ -10,14 +10,14 @@ import SwiftUI
 enum CreationOption: CaseIterable {
     case project
     case issue
-    case label
+    case tag
     case space
 
     var title: String {
         switch self {
         case .project: return "New Project"
         case .issue: return "New Issue"
-        case .label: return "New Label"
+        case .tag: return "New Tag"
         case .space: return "New Space"
         }
     }
@@ -26,7 +26,7 @@ enum CreationOption: CaseIterable {
         switch self {
         case .project: return "folder.badge.plus"
         case .issue: return "doc.badge.plus"
-        case .label: return "tag"
+        case .tag: return "tag"
         case .space: return "person.3.fill"
         }
     }
@@ -35,7 +35,7 @@ enum CreationOption: CaseIterable {
         switch self {
         case .project: return "1"
         case .issue: return "2"
-        case .label: return "3"
+        case .tag: return "3"
         case .space: return "4"
         }
     }

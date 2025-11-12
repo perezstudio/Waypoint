@@ -20,8 +20,8 @@ final class Space {
     @Relationship(deleteRule: .nullify, inverse: \Project.space)
     var projects: [Project] = []
 
-    @Relationship(deleteRule: .nullify, inverse: \Label.space)
-    var labels: [Label] = []
+    @Relationship(deleteRule: .nullify, inverse: \Tag.space)
+    var tags: [Tag] = []
 
     init(name: String, spaceDescription: String? = nil, icon: String = "person.3.fill", color: String = "#007AFF") {
         self.id = UUID()

@@ -34,7 +34,7 @@ final class Issue {
     var dueDate: Date?
 
     var project: Project?
-    var labels: [Label] = []
+    var tags: [Tag] = []
 
     init(title: String, status: IssueStatus = .todo, priority: IssuePriority = .medium, project: Project? = nil) {
         self.id = UUID()

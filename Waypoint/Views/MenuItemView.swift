@@ -21,13 +21,12 @@ struct MenuItemView: View {
 		Button(action: action) {
 			HStack(spacing: 8) {
 				Image(systemName: icon)
-					.font(.system(size: 14))
+					.frame(width: 18, height: 18)
 					.foregroundStyle(isSelected ? .blue : .secondary)
-					.frame(width: 16)
 
 				Text(label)
-					.font(.subheadline)
-					.foregroundStyle(isSelected ? .primary : .primary)
+					.fontWeight(isSelected ? .medium : .regular)
+					.foregroundStyle(.primary)
 
 				Spacer()
 
@@ -41,17 +40,22 @@ struct MenuItemView: View {
 						.clipShape(RoundedRectangle(cornerRadius: 4))
 				}
 			}
-			.padding(.horizontal, 8)
+			.frame(height: 26)
+			.padding(.horizontal, 12)
 			.padding(.vertical, 6)
-			.background(
-				RoundedRectangle(cornerRadius: 6)
-					.fill(isSelected ? .blue.opacity(0.1) : (isHovered ? .primary.opacity(0.05) : .clear))
-			)
+			.frame(maxWidth: .infinity, alignment: .leading)
+			.background {
+				RoundedRectangle(cornerRadius: 8, style: .continuous)
+					.fill(Color.secondary.opacity(0.15))
+					.opacity(isSelected || isHovered ? 1 : 0)
+			}
 			.contentShape(Rectangle())
 		}
 		.buttonStyle(.plain)
 		.onHover { hovering in
-			isHovered = hovering
+			withAnimation(.easeInOut(duration: 0.15)) {
+				isHovered = hovering
+			}
 		}
 	}
 }

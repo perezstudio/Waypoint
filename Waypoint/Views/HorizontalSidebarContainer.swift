@@ -37,6 +37,6 @@ struct HorizontalSidebarContainer: View {
 
 #Preview {
 	HorizontalSidebarContainer()
-		.modelContainer(for: [Space.self, Project.self, Label.self], inMemory: true)
+		.modelContainer(for: [Space.self, Project.self, Tag.self], inMemory: true)
 		.environment(ProjectStore())
 }

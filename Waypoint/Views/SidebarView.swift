@@ -16,7 +16,7 @@ struct SidebarView: View {
 	@State private var showingCreationMenu = false
 	@State private var showingCreateProject = false
 	@State private var showingCreateIssue = false
-	@State private var showingCreateLabel = false
+	@State private var showingCreateTag = false
 	@State private var showingCreateSpace = false
 
 	var body: some View {
@@ -69,8 +69,8 @@ struct SidebarView: View {
 		.sheet(isPresented: $showingCreateIssue) {
 			CreateIssueSheet()
 		}
-		.sheet(isPresented: $showingCreateLabel) {
-			CreateLabelSheet(preselectedSpace: nil)
+		.sheet(isPresented: $showingCreateTag) {
+			CreateTagSheet(preselectedSpace: nil)
 		}
 		.sheet(isPresented: $showingCreateSpace) {
 			CreateSpaceSheet()
@@ -83,8 +83,8 @@ struct SidebarView: View {
 			showingCreateProject = true
 		case .issue:
 			showingCreateIssue = true
-		case .label:
-			showingCreateLabel = true
+		case .tag:
+			showingCreateTag = true
 		case .space:
 			showingCreateSpace = true
 		}
@@ -94,5 +94,5 @@ struct SidebarView: View {
 #Preview {
 	SidebarView(isSidebarCollapsed: .constant(false))
 		.environment(ProjectStore())
-		.modelContainer(for: [Project.self, Issue.self, Space.self, Label.self], inMemory: true)
+		.modelContainer(for: [Project.self, Issue.self, Space.self, Tag.self], inMemory: true)
 }
