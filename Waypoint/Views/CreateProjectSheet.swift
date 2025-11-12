@@ -20,11 +20,17 @@ struct CreateProjectSheet: View {
 	@State private var selectedIcon: String = "folder.fill"
 	@State private var selectedColor: String = "#007AFF"
 	@State private var selectedTeam: Team?
+	@State private var highlightedIconIndex: Int = 0
+	@State private var highlightedColorIndex: Int = 0
+	@State private var showingTeamPicker: Bool = false
 	@FocusState private var focusedField: Field?
 
 	enum Field: Hashable {
 		case name
 		case description
+		case iconGrid
+		case colorGrid
+		case teamPicker
 	}
 
 	init(preselectedTeam: Team? = nil) {
@@ -51,86 +57,74 @@ struct CreateProjectSheet: View {
 
 	var body: some View {
 		NavigationStack {
-			Form {
-				Section {
-					TextField("Project Name", text: $name, axis: .vertical)
-						.textFieldStyle(.plain)
-						.font(.title3)
-						.fontWeight(.semibold)
-						.focused($focusedField, equals: .name)
-						.lineLimit(2)
-				}
-
-				Section("Description") {
-					TextField("Add a description...", text: $description, axis: .vertical)
-						.textFieldStyle(.plain)
-						.focused($focusedField, equals: .description)
-						.lineLimit(3...6)
-				}
-
-				Section("Icon") {
-					LazyVGrid(columns: [
-						GridItem(.adaptive(minimum: 44), spacing: 8)
-					], spacing: 8) {
-						ForEach(commonIcons, id: \.self) { icon in
-							Button(action: { selectedIcon = icon }) {
-								Image(systemName: icon)
-									.font(.title3)
-									.foregroundStyle(selectedIcon == icon ? .white : .primary)
-									.frame(width: 44, height: 44)
-									.background(
-										RoundedRectangle(cornerRadius: 8)
-											.fill(selectedIcon == icon ? Color.accentColor : Color.secondary.opacity(0.1))
-									)
-							}
-							.buttonStyle(.plain)
-						}
+			ScrollViewReader { proxy in
+				Form {
+					Section {
+						TextField("Project Name", text: $name, axis: .vertical)
+							.textFieldStyle(.plain)
+							.font(.title3)
+							.fontWeight(.semibold)
+							.focused($focusedField, equals: .name)
+							.lineLimit(2)
 					}
-				}
+					.id(Field.name)
 
-				Section("Color") {
-					LazyVGrid(columns: [
-						GridItem(.adaptive(minimum: 44), spacing: 8)
-					], spacing: 8) {
-						ForEach(presetColors, id: \.self) { colorHex in
-							Button(action: { selectedColor = colorHex }) {
-								RoundedRectangle(cornerRadius: 8)
-									.fill(Color(hex: colorHex) ?? .blue)
-									.frame(width: 44, height: 44)
-									.overlay(
-										RoundedRectangle(cornerRadius: 8)
-											.strokeBorder(
-												selectedColor == colorHex ? Color.primary : Color.clear,
-												lineWidth: 3
-											)
-									)
-							}
-							.buttonStyle(.plain)
-						}
+					Section("Description") {
+						TextField("Add a description...", text: $description, axis: .vertical)
+							.textFieldStyle(.plain)
+							.focused($focusedField, equals: .description)
+							.lineLimit(3...6)
 					}
-				}
+					.id(Field.description)
 
-				Section("Team") {
+					iconGridSection
+						.id(Field.iconGrid)
+
+					colorGridSection
+						.id(Field.colorGrid)
+
+					Section("Team") {
 					if teams.isEmpty {
 						Text("No teams available. Create a team first.")
 							.font(.caption)
 							.foregroundStyle(.secondary)
 					} else {
-						Picker("Team", selection: $selectedTeam) {
-							Text("Select a team").tag(nil as Team?)
-							ForEach(teams) { team in
-								HStack {
-									Image(systemName: team.icon)
-										.foregroundStyle(Color(hex: team.color) ?? .blue)
-									Text(team.name)
-								}
-								.tag(team as Team?)
+						CustomTeamPickerButton(
+							selectedTeam: $selectedTeam,
+							teams: teams,
+							isFocused: focusedField == .teamPicker,
+							showingPopover: $showingTeamPicker
+						)
+						.focusable()
+						.focused($focusedField, equals: .teamPicker)
+						.focusEffectDisabled()
+						.onKeyPress(.return) {
+							if focusedField == .teamPicker {
+								showingTeamPicker.toggle()
+								return .handled
 							}
+							return .ignored
+						}
+						.onKeyPress(.space) {
+							if focusedField == .teamPicker {
+								showingTeamPicker.toggle()
+								return .handled
+							}
+							return .ignored
+						}
+					}
+				}
+				.id(Field.teamPicker)
+				}
+				.formStyle(.grouped)
+				.onChange(of: focusedField) { _, newField in
+					if let field = newField {
+						withAnimation {
+							proxy.scrollTo(field, anchor: .center)
 						}
 					}
 				}
 			}
-			.formStyle(.grouped)
 			.navigationTitle("New Project")
 			.toolbar {
 				ToolbarItem(placement: .cancellationAction) {
@@ -151,8 +145,215 @@ struct CreateProjectSheet: View {
 			.onAppear {
 				focusedField = .name
 			}
+			.onKeyPress(keys: [.tab]) { press in
+				if press.modifiers.contains(.shift) {
+					handleTab(isShift: true)
+				} else {
+					handleTab(isShift: false)
+				}
+				return .handled
+			}
 		}
 		.frame(width: 500, height: 650)
+	}
+
+	// Grid navigation helpers - Linear navigation
+	private func navigateIconGrid(direction: GridDirection) {
+		let itemsPerRow = 6
+		let totalIcons = commonIcons.count
+
+		switch direction {
+		case .left:
+			// Previous item, wrap to end
+			highlightedIconIndex = highlightedIconIndex > 0 ? highlightedIconIndex - 1 : totalIcons - 1
+		case .right:
+			// Next item, wrap to start
+			highlightedIconIndex = highlightedIconIndex < totalIcons - 1 ? highlightedIconIndex + 1 : 0
+		case .up:
+			// Move up one row (6 items back), clamp at start
+			let newIndex = highlightedIconIndex - itemsPerRow
+			highlightedIconIndex = max(0, newIndex)
+		case .down:
+			// Move down one row (6 items forward), clamp at end
+			let newIndex = highlightedIconIndex + itemsPerRow
+			highlightedIconIndex = min(totalIcons - 1, newIndex)
+		}
+	}
+
+	private func navigateColorGrid(direction: GridDirection) {
+		let itemsPerRow = 6
+		let totalColors = presetColors.count
+
+		switch direction {
+		case .left:
+			// Previous item, wrap to end
+			highlightedColorIndex = highlightedColorIndex > 0 ? highlightedColorIndex - 1 : totalColors - 1
+		case .right:
+			// Next item, wrap to start
+			highlightedColorIndex = highlightedColorIndex < totalColors - 1 ? highlightedColorIndex + 1 : 0
+		case .up:
+			// Move up one row (6 items back), clamp at start
+			let newIndex = highlightedColorIndex - itemsPerRow
+			highlightedColorIndex = max(0, newIndex)
+		case .down:
+			// Move down one row (6 items forward), clamp at end
+			let newIndex = highlightedColorIndex + itemsPerRow
+			highlightedColorIndex = min(totalColors - 1, newIndex)
+		}
+	}
+
+	enum GridDirection {
+		case up, down, left, right
+	}
+
+	private var iconGridSection: some View {
+		Section("Icon") {
+			LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
+				ForEach(Array(commonIcons.enumerated()), id: \.offset) { index, icon in
+					Button(action: { selectedIcon = icon }) {
+						ZStack {
+							RoundedRectangle(cornerRadius: 8)
+								.fill(selectedIcon == icon ? Color.accentColor : Color.secondary.opacity(0.1))
+
+							Image(systemName: icon)
+								.font(.title3)
+								.foregroundStyle(selectedIcon == icon ? .white : .primary)
+
+							if highlightedIconIndex == index && focusedField == .iconGrid {
+								RoundedRectangle(cornerRadius: 8)
+									.strokeBorder(Color.accentColor, lineWidth: 3)
+							}
+						}
+						.frame(width: 44, height: 44)
+						.scaleEffect(highlightedIconIndex == index && focusedField == .iconGrid ? 1.05 : 1.0)
+					}
+					.buttonStyle(.plain)
+				}
+			}
+			.focusable()
+			.focused($focusedField, equals: .iconGrid)
+			.focusEffectDisabled()
+			.onKeyPress(.upArrow) {
+				focusedField == .iconGrid ? (navigateIconGrid(direction: .up), .handled).1 : .ignored
+			}
+			.onKeyPress(.downArrow) {
+				focusedField == .iconGrid ? (navigateIconGrid(direction: .down), .handled).1 : .ignored
+			}
+			.onKeyPress(.leftArrow) {
+				focusedField == .iconGrid ? (navigateIconGrid(direction: .left), .handled).1 : .ignored
+			}
+			.onKeyPress(.rightArrow) {
+				focusedField == .iconGrid ? (navigateIconGrid(direction: .right), .handled).1 : .ignored
+			}
+			.onKeyPress(.return) {
+				focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
+			}
+			.onKeyPress(.space) {
+				focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
+			}
+			.onKeyPress(characters: .decimalDigits) { press in
+				guard focusedField == .iconGrid else { return .ignored }
+				if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < commonIcons.count {
+					highlightedIconIndex = digit - 1
+					selectedIcon = commonIcons[digit - 1]
+					return .handled
+				} else if press.characters == "0" && commonIcons.count >= 10 {
+					highlightedIconIndex = 9
+					selectedIcon = commonIcons[9]
+					return .handled
+				}
+				return .ignored
+			}
+		}
+	}
+
+	private var colorGridSection: some View {
+		Section("Color") {
+			LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
+				ForEach(Array(presetColors.enumerated()), id: \.offset) { index, colorHex in
+					Button(action: { selectedColor = colorHex }) {
+						ZStack {
+							RoundedRectangle(cornerRadius: 8)
+								.fill(Color(hex: colorHex) ?? .blue)
+
+							if selectedColor == colorHex {
+								RoundedRectangle(cornerRadius: 8)
+									.strokeBorder(Color.primary, lineWidth: 3)
+							}
+
+							if highlightedColorIndex == index && focusedField == .colorGrid {
+								RoundedRectangle(cornerRadius: 8)
+									.strokeBorder(Color.white, lineWidth: 2)
+									.padding(1)
+							}
+						}
+						.frame(width: 44, height: 44)
+						.scaleEffect(highlightedColorIndex == index && focusedField == .colorGrid ? 1.05 : 1.0)
+					}
+					.buttonStyle(.plain)
+				}
+			}
+			.focusable()
+			.focused($focusedField, equals: .colorGrid)
+			.focusEffectDisabled()
+			.onKeyPress(.upArrow) {
+				focusedField == .colorGrid ? (navigateColorGrid(direction: .up), .handled).1 : .ignored
+			}
+			.onKeyPress(.downArrow) {
+				focusedField == .colorGrid ? (navigateColorGrid(direction: .down), .handled).1 : .ignored
+			}
+			.onKeyPress(.leftArrow) {
+				focusedField == .colorGrid ? (navigateColorGrid(direction: .left), .handled).1 : .ignored
+			}
+			.onKeyPress(.rightArrow) {
+				focusedField == .colorGrid ? (navigateColorGrid(direction: .right), .handled).1 : .ignored
+			}
+			.onKeyPress(.return) {
+				focusedField == .colorGrid ? (selectedColor = presetColors[highlightedColorIndex], .handled).1 : .ignored
+			}
+			.onKeyPress(.space) {
+				focusedField == .colorGrid ? (selectedColor = presetColors[highlightedColorIndex], .handled).1 : .ignored
+			}
+			.onKeyPress(characters: .decimalDigits) { press in
+				guard focusedField == .colorGrid else { return .ignored }
+				if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < presetColors.count {
+					highlightedColorIndex = digit - 1
+					selectedColor = presetColors[digit - 1]
+					return .handled
+				} else if press.characters == "0" && presetColors.count >= 10 {
+					highlightedColorIndex = 9
+					selectedColor = presetColors[9]
+					return .handled
+				}
+				return .ignored
+			}
+		}
+	}
+
+	private func handleTab(isShift: Bool) {
+		let fields: [Field] = [.name, .description, .iconGrid, .colorGrid, .teamPicker]
+		guard let currentField = focusedField,
+			  let currentIndex = fields.firstIndex(of: currentField) else {
+			focusedField = fields.first
+			return
+		}
+
+		if isShift {
+			// Move to previous field
+			let previousIndex = currentIndex > 0 ? currentIndex - 1 : fields.count - 1
+			focusedField = fields[previousIndex]
+		} else {
+			// Move to next field
+			let nextIndex = currentIndex < fields.count - 1 ? currentIndex + 1 : 0
+			focusedField = fields[nextIndex]
+		}
+
+		// Reset highlighted indices when entering grids
+		if focusedField == .iconGrid {
+			highlightedIconIndex = commonIcons.firstIndex(of: selectedIcon) ?? 0
+		} else if focusedField == .colorGrid {
+			highlightedColorIndex = presetColors.firstIndex(of: selectedColor) ?? 0
+		}
 	}
 
 	private func createProject() {
@@ -170,6 +371,151 @@ struct CreateProjectSheet: View {
 		modelContext.insert(newProject)
 
 		dismiss()
+	}
+}
+
+// Custom Team Picker Button with Keyboard Navigation
+struct CustomTeamPickerButton: View {
+	@Binding var selectedTeam: Team?
+	let teams: [Team]
+	let isFocused: Bool
+	@Binding var showingPopover: Bool
+
+	var body: some View {
+		HStack(spacing: 8) {
+			if let team = selectedTeam {
+				Image(systemName: team.icon)
+					.foregroundStyle(Color(hex: team.color) ?? .blue)
+				Text(team.name)
+					.foregroundStyle(.primary)
+			} else {
+				Text("Select a team")
+					.foregroundStyle(.secondary)
+			}
+
+			Spacer()
+
+			Image(systemName: "chevron.up.chevron.down")
+				.font(.caption2)
+				.foregroundStyle(.secondary)
+		}
+		.padding(.horizontal, 12)
+		.padding(.vertical, 8)
+		.background(Color.secondary.opacity(0.1))
+		.clipShape(RoundedRectangle(cornerRadius: 6))
+		.overlay(
+			RoundedRectangle(cornerRadius: 6)
+				.strokeBorder(isFocused ? Color.accentColor : Color.clear, lineWidth: 2)
+		)
+		.contentShape(Rectangle())
+		.onTapGesture {
+			showingPopover.toggle()
+		}
+		.popover(isPresented: $showingPopover, arrowEdge: .bottom) {
+			TeamPickerPopover(selectedTeam: $selectedTeam, teams: teams) {
+				showingPopover = false
+			}
+		}
+	}
+}
+
+// Team Picker Popover with Keyboard Navigation
+struct TeamPickerPopover: View {
+	@Binding var selectedTeam: Team?
+	let teams: [Team]
+	let onDismiss: () -> Void
+
+	@State private var selectedIndex: Int = 0
+	@FocusState private var isFocused: Bool
+
+	var body: some View {
+		VStack(spacing: 4) {
+			ForEach(Array(teams.enumerated()), id: \.element.id) { index, team in
+				Button(action: {
+					selectedTeam = team
+					onDismiss()
+				}) {
+					HStack(spacing: 12) {
+						Image(systemName: team.icon)
+							.font(.system(size: 14))
+							.foregroundStyle(Color(hex: team.color) ?? .blue)
+							.frame(width: 16)
+
+						Text(team.name)
+							.font(.subheadline)
+							.foregroundStyle(.primary)
+
+						Spacer()
+
+						if selectedTeam?.id == team.id {
+							Image(systemName: "checkmark")
+								.font(.caption)
+								.foregroundStyle(.secondary)
+						}
+					}
+					.padding(.horizontal, 10)
+					.padding(.vertical, 8)
+					.background(
+						RoundedRectangle(cornerRadius: 6)
+							.fill(selectedIndex == index ? Color.accentColor.opacity(0.1) : Color.clear)
+					)
+				}
+				.buttonStyle(.plain)
+				.onHover { isHovering in
+					if isHovering {
+						selectedIndex = index
+					}
+				}
+			}
+		}
+		.padding(8)
+		.frame(width: 220)
+		.focusable()
+		.focused($isFocused)
+		.focusEffectDisabled()
+		.onAppear {
+			// Auto-focus and find current selection
+			if let currentTeam = selectedTeam,
+			   let index = teams.firstIndex(where: { $0.id == currentTeam.id }) {
+				selectedIndex = index
+			}
+			DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+				isFocused = true
+			}
+		}
+		.onKeyPress(.upArrow) {
+			selectedIndex = selectedIndex > 0 ? selectedIndex - 1 : teams.count - 1
+			return .handled
+		}
+		.onKeyPress(.downArrow) {
+			selectedIndex = selectedIndex < teams.count - 1 ? selectedIndex + 1 : 0
+			return .handled
+		}
+		.onKeyPress(.return) {
+			if selectedIndex < teams.count {
+				selectedTeam = teams[selectedIndex]
+				onDismiss()
+			}
+			return .handled
+		}
+		.onKeyPress(.escape) {
+			onDismiss()
+			return .handled
+		}
+		.onKeyPress(characters: .decimalDigits) { press in
+			if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < teams.count {
+				selectedIndex = digit - 1
+				selectedTeam = teams[digit - 1]
+				onDismiss()
+				return .handled
+			} else if press.characters == "0" && teams.count >= 10 {
+				selectedIndex = 9
+				selectedTeam = teams[9]
+				onDismiss()
+				return .handled
+			}
+			return .ignored
+		}
 	}
 }
 
