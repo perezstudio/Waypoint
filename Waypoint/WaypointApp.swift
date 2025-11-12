@@ -15,6 +15,8 @@ struct WaypointApp: App {
             Item.self,
             Project.self,
             Issue.self,
+            Label.self,
+            Team.self,
         ])
         let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
 

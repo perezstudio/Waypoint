@@ -14,6 +14,13 @@ struct SidebarView: View {
 	@Environment(ProjectStore.self) private var projectStore
 	@Query private var projects: [Project]
 
+	// Creation menu and sheets state
+	@State private var showingCreationMenu = false
+	@State private var showingCreateProject = false
+	@State private var showingCreateIssue = false
+	@State private var showingCreateLabel = false
+	@State private var showingCreateTeam = false
+
 	var body: some View {
 		VStack(alignment: .leading, spacing: 0) {
 			// Sidebar toggle button - pushed to the right
@@ -133,8 +140,14 @@ struct SidebarView: View {
 					Spacer()
 
 					IconButton(icon: "plus", action: {
-						// Add action
+						showingCreationMenu.toggle()
 					}, tooltip: "Add")
+					.popover(isPresented: $showingCreationMenu, arrowEdge: .top) {
+						CreationMenuPopover { option in
+							handleCreationSelection(option)
+						}
+					}
+					.keyboardShortcut("n", modifiers: .command)
 				}
 				.padding(.horizontal, 16)
 				.padding(.top, 12)
@@ -142,6 +155,31 @@ struct SidebarView: View {
 			}
 		}
 		.frame(maxHeight: .infinity)
+		.sheet(isPresented: $showingCreateProject) {
+			CreateProjectSheet()
+		}
+		.sheet(isPresented: $showingCreateIssue) {
+			CreateIssueSheet()
+		}
+		.sheet(isPresented: $showingCreateLabel) {
+			CreateLabelSheet()
+		}
+		.sheet(isPresented: $showingCreateTeam) {
+			CreateTeamSheet()
+		}
+	}
+
+	private func handleCreationSelection(_ option: CreationOption) {
+		switch option {
+		case .project:
+			showingCreateProject = true
+		case .issue:
+			showingCreateIssue = true
+		case .label:
+			showingCreateLabel = true
+		case .team:
+			showingCreateTeam = true
+		}
 	}
 }
 

@@ -11,6 +11,7 @@ import SwiftData
 struct CreateIssueSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
+	@Query private var projects: [Project]
 
 	let defaultStatus: IssueStatus
 	let project: Project?
@@ -21,6 +22,7 @@ struct CreateIssueSheet: View {
 	@State private var priority: IssuePriority = .medium
 	@State private var dueDate: Date = Date()
 	@State private var hasDueDate: Bool = false
+	@State private var selectedProject: Project?
 	@FocusState private var focusedField: Field?
 
 	enum Field: Hashable {
@@ -28,10 +30,11 @@ struct CreateIssueSheet: View {
 		case description
 	}
 
-	init(defaultStatus: IssueStatus, project: Project?) {
+	init(defaultStatus: IssueStatus = .todo, project: Project? = nil) {
 		self.defaultStatus = defaultStatus
 		self.project = project
 		_status = State(initialValue: defaultStatus)
+		_selectedProject = State(initialValue: project)
 	}
 
 	var body: some View {
@@ -88,12 +91,26 @@ struct CreateIssueSheet: View {
 					}
 				}
 
-				if let project = project {
-					Section("Project") {
+				Section("Project") {
+					if project != nil {
+						// Show read-only project
 						HStack {
-							Image(systemName: project.icon)
+							Image(systemName: project!.icon)
 								.foregroundStyle(.secondary)
-							Text(project.name)
+							Text(project!.name)
+						}
+					} else {
+						// Show project picker
+						Picker("Project", selection: $selectedProject) {
+							Text("None").tag(nil as Project?)
+							ForEach(projects) { proj in
+								HStack {
+									Image(systemName: proj.icon)
+										.foregroundStyle(Color(hex: proj.color) ?? .blue)
+									Text(proj.name)
+								}
+								.tag(proj as Project?)
+							}
 						}
 					}
 				}
@@ -128,7 +145,7 @@ struct CreateIssueSheet: View {
 			title: title.trimmingCharacters(in: .whitespacesAndNewlines),
 			status: status,
 			priority: priority,
-			project: project
+			project: selectedProject
 		)
 
 		if !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

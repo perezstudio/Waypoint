@@ -20,12 +20,15 @@ final class Project {
     @Relationship(deleteRule: .cascade, inverse: \Issue.project)
     var issues: [Issue] = []
 
-    init(name: String, icon: String = "folder.fill", color: String = "#007AFF") {
+    var team: Team?
+
+    init(name: String, icon: String = "folder.fill", color: String = "#007AFF", team: Team? = nil) {
         self.id = UUID()
         self.name = name
         self.icon = icon
         self.color = color
         self.createdAt = Date()
         self.updatedAt = Date()
+        self.team = team
     }
 }
