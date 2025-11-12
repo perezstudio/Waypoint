@@ -18,11 +18,9 @@ struct SplitView<Sidebar: View, Detail: View>: NSViewControllerRepresentable {
 
         // Create hosting controllers for SwiftUI views
         let sidebarHosting = NSHostingController(rootView: sidebar)
-        sidebarHosting.sizingOptions = [.intrinsicContentSize]
         sidebarHosting.safeAreaRegions = []  // Remove all safe areas
 
         let detailHosting = NSHostingController(rootView: detail)
-        detailHosting.sizingOptions = [.intrinsicContentSize]
         detailHosting.safeAreaRegions = []  // Remove all safe areas
 
         // Assign to split view controller
@@ -38,9 +36,27 @@ struct SplitView<Sidebar: View, Detail: View>: NSViewControllerRepresentable {
 
     func updateNSViewController(_ nsViewController: WaypointSplitViewController, context: Context) {
         // Update sidebar collapsed state if changed externally
-        if let sidebarItem = nsViewController.splitViewItems.first,
-           sidebarItem.isCollapsed != isSidebarCollapsed {
-            nsViewController.setSidebarCollapsed(isSidebarCollapsed, animated: true)
+        let currentWidth = nsViewController.splitView.subviews.first?.frame.width ?? 0
+        let isCurrentlyCollapsed = currentWidth < 1
+
+        if isCurrentlyCollapsed != isSidebarCollapsed {
+            // Update split view directly without modifying state during view update
+            if isSidebarCollapsed {
+                // Collapse
+                if currentWidth > 1 {
+                    nsViewController.savedSidebarWidth = currentWidth
+                }
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.25
+                    nsViewController.splitView.animator().setPosition(0, ofDividerAt: 0)
+                }
+            } else {
+                // Expand
+                NSAnimationContext.runAnimationGroup { context in
+                    context.duration = 0.25
+                    nsViewController.splitView.animator().setPosition(nsViewController.savedSidebarWidth, ofDividerAt: 0)
+                }
+            }
         }
 
         // Update the SwiftUI views
