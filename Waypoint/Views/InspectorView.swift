@@ -14,23 +14,17 @@ struct InspectorView: View {
 	var body: some View {
 		VStack(alignment: .leading, spacing: 0) {
 			// Inspector header
-			HStack {
+			HStack(alignment: .center) {
 				Text("Inspector")
-					.font(.headline)
+					.font(.title2)
+					.fontWeight(.semibold)
 
 				Spacer()
-
-				IconButton(
-					icon: "xmark.circle.fill",
-					action: {
-						withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-							isVisible = false
-						}
-					},
-					tooltip: "Close Inspector"
-				)
 			}
-			.padding(16)
+			.padding(.horizontal, 20)
+			.padding(.vertical, 16)
+			.frame(maxHeight: 60)
+			.clipped()
 
 			Divider()
 
@@ -70,15 +64,7 @@ struct InspectorView: View {
 				.padding(16)
 			}
 		}
-		.background(.ultraThinMaterial)
-		.clipShape(RoundedRectangle(cornerRadius: 8))
-		.overlay(
-			RoundedRectangle(cornerRadius: 8)
-				.strokeBorder(.separator.opacity(0.5), lineWidth: 0.5)
-		)
-		.padding(.vertical, 16)
-		.padding(.trailing, 16)
-		.shadow(color: .black.opacity(0.15), radius: 8, x: -2, y: 0)
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
 	}
 }
 

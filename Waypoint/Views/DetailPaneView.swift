@@ -13,21 +13,12 @@ struct DetailPaneView: View {
 
 	var body: some View {
 		GeometryReader { geometry in
-			ZStack(alignment: .trailing) {
-				DetailView(isInspectorVisible: $isInspectorVisible, isSidebarCollapsed: $isSidebarCollapsed)
-					.background(.bar)
-					.clipShape(RoundedRectangle(cornerRadius: 12))
-					.shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 0)
-
-				// Inspector panel - slides in from the right
-				if isInspectorVisible {
-					InspectorView(isVisible: $isInspectorVisible)
-						.frame(width: 280)
-						.transition(.move(edge: .trailing).combined(with: .opacity))
-				}
-			}
-			.frame(width: geometry.size.width - 12, height: geometry.size.height - 24)
-			.position(x: (geometry.size.width - 12) / 2, y: geometry.size.height / 2)
+			DetailView(isInspectorVisible: $isInspectorVisible, isSidebarCollapsed: $isSidebarCollapsed)
+				.background(.bar)
+				.clipShape(RoundedRectangle(cornerRadius: 12))
+				.shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 0)
+				.frame(width: geometry.size.width - 12, height: geometry.size.height - 24)
+				.position(x: (geometry.size.width - 12) / 2, y: geometry.size.height / 2)
 		}
 	}
 }

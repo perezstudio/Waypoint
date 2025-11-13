@@ -110,6 +110,14 @@ struct DetailView: View {
 	}
 
 	var body: some View {
+		DetailViewSplitView(
+			content: mainContent,
+			inspector: InspectorView(isVisible: $isInspectorVisible),
+			isInspectorVisible: $isInspectorVisible
+		)
+	}
+
+	private var mainContent: some View {
 		VStack(spacing: 0) {
 			// Header toolbar
 			HStack(alignment: .center) {
