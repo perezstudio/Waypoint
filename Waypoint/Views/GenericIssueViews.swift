@@ -11,11 +11,13 @@ struct GenericIssueBoardView: View {
     let groups: [IssueGroup]
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
+    @Binding var isInspectorVisible: Bool
 
-    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((IssueStatus?) -> Void)? = nil) {
+    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((IssueStatus?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
         self.groups = groups
         self.showAddButton = showAddButton
         self.onAddIssue = onAddIssue
+        self._isInspectorVisible = isInspectorVisible
     }
 
     var body: some View {
@@ -25,7 +27,8 @@ struct GenericIssueBoardView: View {
                     GenericIssueColumn(
                         group: group,
                         showAddButton: showAddButton,
-                        onAddIssue: onAddIssue
+                        onAddIssue: onAddIssue,
+                        isInspectorVisible: $isInspectorVisible
                     )
                 }
             }
@@ -40,11 +43,13 @@ struct GenericIssueListView: View {
     let groups: [IssueGroup]
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
+    @Binding var isInspectorVisible: Bool
 
-    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((IssueStatus?) -> Void)? = nil) {
+    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((IssueStatus?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
         self.groups = groups
         self.showAddButton = showAddButton
         self.onAddIssue = onAddIssue
+        self._isInspectorVisible = isInspectorVisible
     }
 
     var body: some View {
@@ -53,7 +58,8 @@ struct GenericIssueListView: View {
                 GenericIssueSection(
                     group: group,
                     showAddButton: showAddButton,
-                    onAddIssue: onAddIssue
+                    onAddIssue: onAddIssue,
+                    isInspectorVisible: $isInspectorVisible
                 )
             }
         }
@@ -67,6 +73,7 @@ struct GenericIssueColumn: View {
     let group: IssueGroup
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
+    @Binding var isInspectorVisible: Bool
 
     private var color: Color {
         colorForGroup(group)
@@ -99,7 +106,7 @@ struct GenericIssueColumn: View {
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(group.issues) { issue in
-                        IssueCard(issue: issue)
+                        IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
                     }
 
                     // Add issue button (only for status-based grouping)
@@ -141,6 +148,7 @@ struct GenericIssueSection: View {
     let group: IssueGroup
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
+    @Binding var isInspectorVisible: Bool
 
     private var color: Color {
         colorForGroup(group)
@@ -183,7 +191,7 @@ struct GenericIssueSection: View {
             // Issue cards
             VStack(spacing: 8) {
                 ForEach(group.issues) { issue in
-                    IssueCard(issue: issue)
+                    IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
                 }
 
                 if group.issues.isEmpty {

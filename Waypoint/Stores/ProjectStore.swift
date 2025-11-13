@@ -60,6 +60,7 @@ class ProjectStore {
     var selectedProject: Project?
     var selectedViewType: ProjectViewType = .overview
     var issuesViewMode: IssuesViewMode = .board
+    var selectedIssue: Issue?
 
     init() {}
 

@@ -337,9 +337,9 @@ struct DetailView: View {
 	private func systemViewContent(for systemView: SystemView) -> some View {
 		switch systemView {
 		case .inbox:
-			InboxView()
+			InboxView(isInspectorVisible: $isInspectorVisible)
 		case .today:
-			TodayView()
+			TodayView(isInspectorVisible: $isInspectorVisible)
 		case .upcoming:
 			Text("Upcoming Tasks")
 				.foregroundStyle(.secondary)
@@ -358,7 +358,7 @@ struct DetailView: View {
 		case .overview:
 			ProjectOverviewView()
 		case .issues:
-			ProjectIssuesView()
+			ProjectIssuesView(isInspectorVisible: $isInspectorVisible)
 		case .updates:
 			ProjectUpdatesView()
 		}
@@ -526,6 +526,7 @@ struct ProjectIssuesView: View {
 	@Query private var allIssues: [Issue]
 	@State private var showingCreateIssue = false
 	@State private var createIssueForStatus: IssueStatus?
+	@Binding var isInspectorVisible: Bool
 
 	private var projectIssues: [Issue] {
 		guard let project = projectStore.selectedProject else { return [] }
@@ -546,7 +547,8 @@ struct ProjectIssuesView: View {
 					onAddIssue: { status in
 						createIssueForStatus = status
 						showingCreateIssue = true
-					}
+					},
+					isInspectorVisible: $isInspectorVisible
 				)
 			case .list:
 				IssueListView(
@@ -554,7 +556,8 @@ struct ProjectIssuesView: View {
 					onAddIssue: { status in
 						createIssueForStatus = status
 						showingCreateIssue = true
-					}
+					},
+					isInspectorVisible: $isInspectorVisible
 				)
 			}
 		}
@@ -570,6 +573,7 @@ struct ProjectIssuesView: View {
 struct IssueBoardView: View {
 	let issuesByStatus: [IssueStatus: [Issue]]
 	let onAddIssue: (IssueStatus) -> Void
+	@Binding var isInspectorVisible: Bool
 
 	var body: some View {
 		HStack(alignment: .top, spacing: 16) {
@@ -578,28 +582,32 @@ struct IssueBoardView: View {
 				status: .todo,
 				issues: issuesByStatus[.todo] ?? [],
 				color: .gray,
-				onAddIssue: onAddIssue
+				onAddIssue: onAddIssue,
+				isInspectorVisible: $isInspectorVisible
 			)
 			IssueColumn(
 				title: "In Progress",
 				status: .inProgress,
 				issues: issuesByStatus[.inProgress] ?? [],
 				color: .orange,
-				onAddIssue: onAddIssue
+				onAddIssue: onAddIssue,
+				isInspectorVisible: $isInspectorVisible
 			)
 			IssueColumn(
 				title: "Review",
 				status: .review,
 				issues: issuesByStatus[.review] ?? [],
 				color: .purple,
-				onAddIssue: onAddIssue
+				onAddIssue: onAddIssue,
+				isInspectorVisible: $isInspectorVisible
 			)
 			IssueColumn(
 				title: "Done",
 				status: .done,
 				issues: issuesByStatus[.done] ?? [],
 				color: .green,
-				onAddIssue: onAddIssue
+				onAddIssue: onAddIssue,
+				isInspectorVisible: $isInspectorVisible
 			)
 		}
 	}
@@ -609,6 +617,7 @@ struct IssueBoardView: View {
 struct IssueListView: View {
 	let issuesByStatus: [IssueStatus: [Issue]]
 	let onAddIssue: (IssueStatus) -> Void
+	@Binding var isInspectorVisible: Bool
 
 	private let statuses: [(status: IssueStatus, title: String, color: Color)] = [
 		(.todo, "To Do", .gray),
@@ -626,7 +635,8 @@ struct IssueListView: View {
 						status: statusInfo.status,
 						issues: issuesByStatus[statusInfo.status] ?? [],
 						color: statusInfo.color,
-						onAddIssue: onAddIssue
+						onAddIssue: onAddIssue,
+						isInspectorVisible: $isInspectorVisible
 					)
 				}
 			}
@@ -640,6 +650,7 @@ struct IssueSection: View {
 	let issues: [Issue]
 	let color: Color
 	let onAddIssue: (IssueStatus) -> Void
+	@Binding var isInspectorVisible: Bool
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {
@@ -675,7 +686,7 @@ struct IssueSection: View {
 			// Issue cards
 			VStack(spacing: 8) {
 				ForEach(issues) { issue in
-					IssueCard(issue: issue)
+					IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
 				}
 
 				if issues.isEmpty {
@@ -698,6 +709,7 @@ struct IssueColumn: View {
 	let issues: [Issue]
 	let color: Color
 	let onAddIssue: (IssueStatus) -> Void
+	@Binding var isInspectorVisible: Bool
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {
@@ -726,7 +738,7 @@ struct IssueColumn: View {
 			ScrollView {
 				VStack(spacing: 8) {
 					ForEach(issues) { issue in
-						IssueCard(issue: issue)
+						IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
 					}
 
 					// Add issue button
@@ -762,6 +774,8 @@ struct IssueColumn: View {
 
 struct IssueCard: View {
 	let issue: Issue
+	@Binding var isInspectorVisible: Bool
+	@Environment(ProjectStore.self) private var projectStore
 
 	private var priorityColor: Color {
 		switch issue.priority {
@@ -826,6 +840,10 @@ struct IssueCard: View {
 			RoundedRectangle(cornerRadius: 8)
 				.stroke(priorityColor.opacity(0.3), lineWidth: 1)
 		)
+		.onTapGesture {
+			projectStore.selectedIssue = issue
+			isInspectorVisible = true
+		}
 	}
 }
 

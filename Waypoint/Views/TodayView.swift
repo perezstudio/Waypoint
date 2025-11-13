@@ -11,6 +11,7 @@ struct TodayView: View {
     @Query private var allIssues: [Issue]
     @State private var showingCreateIssue = false
     @State private var createIssueWithStatus: IssueStatus?
+    @Binding var isInspectorVisible: Bool
 
     private var settings: ViewSettings {
         viewSettingsStore.todaySettings
@@ -48,7 +49,8 @@ struct TodayView: View {
                         onAddIssue: { status in
                             createIssueWithStatus = status
                             showingCreateIssue = true
-                        }
+                        },
+                        isInspectorVisible: $isInspectorVisible
                     )
                 case .list:
                     ScrollView {
@@ -58,7 +60,8 @@ struct TodayView: View {
                             onAddIssue: { status in
                                 createIssueWithStatus = status
                                 showingCreateIssue = true
-                            }
+                            },
+                            isInspectorVisible: $isInspectorVisible
                         )
                     }
                 }
@@ -108,7 +111,7 @@ struct TodayView: View {
 }
 
 #Preview {
-    TodayView()
+    TodayView(isInspectorVisible: .constant(false))
         .environment(ViewSettingsStore())
         .modelContainer(for: [Issue.self, Project.self, Space.self, Tag.self])
 }
