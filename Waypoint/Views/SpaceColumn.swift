@@ -88,6 +88,7 @@ struct SpaceColumn: View {
 							.foregroundStyle(AppColor.color(from: space.color))
 						Text(space.name)
 							.fontWeight(.medium)
+							.foregroundStyle(.white)
 						Spacer()
 						Menu {
 							Button {
@@ -98,11 +99,12 @@ struct SpaceColumn: View {
 						} label: {
 							Image(systemName: "ellipsis.circle")
 								.imageScale(.medium)
+								.foregroundStyle(.white.opacity(0.6))
 								.padding(6)
 								.frame(width: 26, height: 26)
 								.background {
 									RoundedRectangle(cornerRadius: 8, style: .continuous)
-										.fill(isHoveringClose ? Color.secondary.opacity(0.15) : .clear)
+										.fill(isHoveringClose ? Color.white.opacity(0.15) : .clear)
 								}
 								.contentShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 						}
@@ -150,9 +152,10 @@ struct SpaceColumn: View {
 							.contentTransition(.symbolEffect(.replace))
 							.animation(.easeInOut(duration: 0.15), value: isHoveringTab)
 							.animation(.easeInOut(duration: 0.15), value: showBookmarks)
-							.foregroundStyle(.secondary)
+							.foregroundStyle(.white.opacity(0.6))
 						Text("All Spaces")
 							.fontWeight(.medium)
+							.foregroundStyle(.white)
 						Spacer()
 					}
 					.frame(height: 26)
@@ -205,12 +208,12 @@ struct SpaceColumn: View {
 						HStack {
 							Text("Favorite Projects")
 								.font(.caption)
-								.foregroundStyle(.secondary)
+								.foregroundStyle(.white.opacity(0.6))
 
 							if space != nil {
 								Text("(\(spaceProjects.count))")
 									.font(.caption2)
-									.foregroundStyle(.tertiary)
+									.foregroundStyle(.white.opacity(0.5))
 							}
 						}
 						.padding(.leading, 8)
@@ -229,7 +232,7 @@ struct SpaceColumn: View {
 							if spaceProjects.isEmpty && space != nil {
 								Text("No projects in this space")
 									.font(.caption)
-									.foregroundStyle(.tertiary)
+									.foregroundStyle(.white.opacity(0.5))
 									.frame(maxWidth: .infinity, alignment: .center)
 									.padding(.vertical, 12)
 							}
@@ -241,12 +244,12 @@ struct SpaceColumn: View {
 						HStack {
 							Text("Favorite Tags")
 								.font(.caption)
-								.foregroundStyle(.secondary)
+								.foregroundStyle(.white.opacity(0.6))
 
 							if space != nil {
 								Text("(\(spaceTags.count))")
 									.font(.caption2)
-									.foregroundStyle(.tertiary)
+									.foregroundStyle(.white.opacity(0.5))
 							}
 						}
 						.padding(.leading, 8)
@@ -263,7 +266,7 @@ struct SpaceColumn: View {
 							if spaceTags.isEmpty && space != nil {
 								Text("No tags in this space")
 									.font(.caption)
-									.foregroundStyle(.tertiary)
+									.foregroundStyle(.white.opacity(0.5))
 									.frame(maxWidth: .infinity, alignment: .center)
 									.padding(.vertical, 12)
 							}

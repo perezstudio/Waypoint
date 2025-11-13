@@ -23,21 +23,21 @@ struct MenuItemView: View {
 			HStack(spacing: 8) {
 				Image(systemName: icon)
 					.frame(width: 18, height: 18)
-					.foregroundStyle(isSelected ? (iconColor ?? .blue) : .secondary)
+					.foregroundStyle(isSelected ? (iconColor ?? .blue) : .white.opacity(0.6))
 
 				Text(label)
-					.fontWeight(isSelected ? .medium : .regular)
-					.foregroundStyle(.primary)
+					.fontWeight(.medium)
+					.foregroundStyle(.white)
 
 				Spacer()
 
 				if let count = count {
 					Text("\(count)")
 						.font(.caption)
-						.foregroundStyle(.secondary)
+						.foregroundStyle(.white.opacity(0.7))
 						.padding(.horizontal, 6)
 						.padding(.vertical, 2)
-						.background(.tertiary.opacity(0.5))
+						.background(.white.opacity(0.15))
 						.clipShape(RoundedRectangle(cornerRadius: 4))
 				}
 			}
