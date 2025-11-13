@@ -12,12 +12,123 @@ struct GenericIssueBoardView: View {
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
     @Binding var isInspectorVisible: Bool
+    @FocusState private var focusedElement: FocusableElement?
+    @Environment(ProjectStore.self) private var projectStore
 
     init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((IssueStatus?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
         self.groups = groups
         self.showAddButton = showAddButton
         self.onAddIssue = onAddIssue
         self._isInspectorVisible = isInspectorVisible
+    }
+
+    // Build 2D grid structure: array of columns, each containing array of elements
+    private var gridStructure: [[FocusableElement]] {
+        var grid: [[FocusableElement]] = []
+        for group in groups.sorted(by: { $0.order < $1.order }) {
+            var column: [FocusableElement] = []
+            // Add all issues
+            for issue in group.issues {
+                column.append(.issue(issue.id))
+            }
+            // Add the add button if applicable
+            if showAddButton && statusForGroup(group) != nil {
+                column.append(.addButton(group.id))
+            }
+            grid.append(column)
+        }
+        return grid
+    }
+
+    // Find current position in grid
+    private func findPosition(of element: FocusableElement) -> (column: Int, row: Int)? {
+        for (colIndex, column) in gridStructure.enumerated() {
+            if let rowIndex = column.firstIndex(of: element) {
+                return (colIndex, rowIndex)
+            }
+        }
+        return nil
+    }
+
+    private func moveLeft() {
+        guard let currentFocus = focusedElement,
+              let position = findPosition(of: currentFocus),
+              position.column > 0 else {
+            // Focus first element in first column if nothing focused or at leftmost
+            focusedElement = gridStructure.first?.first
+            return
+        }
+
+        let targetColumn = position.column - 1
+        let targetRow = min(position.row, gridStructure[targetColumn].count - 1)
+        focusedElement = gridStructure[targetColumn][targetRow]
+    }
+
+    private func moveRight() {
+        guard let currentFocus = focusedElement,
+              let position = findPosition(of: currentFocus),
+              position.column < gridStructure.count - 1 else {
+            // Focus first element if nothing focused, stay at rightmost if at end
+            if focusedElement == nil {
+                focusedElement = gridStructure.first?.first
+            }
+            return
+        }
+
+        let targetColumn = position.column + 1
+        let targetRow = min(position.row, gridStructure[targetColumn].count - 1)
+        focusedElement = gridStructure[targetColumn][targetRow]
+    }
+
+    private func moveUp() {
+        guard let currentFocus = focusedElement,
+              let position = findPosition(of: currentFocus),
+              position.row > 0 else {
+            // Focus first element in first column if nothing focused or at top
+            focusedElement = gridStructure.first?.first
+            return
+        }
+
+        focusedElement = gridStructure[position.column][position.row - 1]
+    }
+
+    private func moveDown() {
+        guard let currentFocus = focusedElement,
+              let position = findPosition(of: currentFocus) else {
+            // Focus first element if nothing focused
+            focusedElement = gridStructure.first?.first
+            return
+        }
+
+        let column = gridStructure[position.column]
+        guard position.row < column.count - 1 else {
+            // At bottom, stay there
+            return
+        }
+
+        focusedElement = column[position.row + 1]
+    }
+
+    private func activateFocused() {
+        guard let focused = focusedElement else { return }
+
+        switch focused {
+        case .issue(let issueId):
+            // Find and select the issue
+            for group in groups {
+                if let issue = group.issues.first(where: { $0.id == issueId }) {
+                    projectStore.selectedIssue = issue
+                    isInspectorVisible = true
+                    return
+                }
+            }
+        case .addButton(let groupId):
+            // Trigger add issue for this group
+            if let group = groups.first(where: { $0.id == groupId }),
+               let status = statusForGroup(group) {
+                onAddIssue?(status)
+            }
+        }
     }
 
     var body: some View {
@@ -28,11 +139,36 @@ struct GenericIssueBoardView: View {
                         group: group,
                         showAddButton: showAddButton,
                         onAddIssue: onAddIssue,
-                        isInspectorVisible: $isInspectorVisible
+                        isInspectorVisible: $isInspectorVisible,
+                        focusedElement: $focusedElement
                     )
                 }
             }
             .padding(20)
+        }
+        .onKeyPress(.upArrow) {
+            moveUp()
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            moveDown()
+            return .handled
+        }
+        .onKeyPress(.leftArrow) {
+            moveLeft()
+            return .handled
+        }
+        .onKeyPress(.rightArrow) {
+            moveRight()
+            return .handled
+        }
+        .onKeyPress(.return) {
+            activateFocused()
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            focusedElement = nil
+            return .handled
         }
     }
 }
@@ -44,12 +180,76 @@ struct GenericIssueListView: View {
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
     @Binding var isInspectorVisible: Bool
+    @FocusState private var focusedElement: FocusableElement?
+    @Environment(ProjectStore.self) private var projectStore
 
     init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((IssueStatus?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
         self.groups = groups
         self.showAddButton = showAddButton
         self.onAddIssue = onAddIssue
         self._isInspectorVisible = isInspectorVisible
+    }
+
+    // Build flat list of all focusable elements in order
+    private var focusableElements: [FocusableElement] {
+        var elements: [FocusableElement] = []
+        for group in groups.sorted(by: { $0.order < $1.order }) {
+            // Add all issues in this group
+            for issue in group.issues {
+                elements.append(.issue(issue.id))
+            }
+            // Add the add button for this group if applicable
+            if showAddButton && statusForGroup(group) != nil {
+                elements.append(.addButton(group.id))
+            }
+        }
+        return elements
+    }
+
+    private func moveUp() {
+        guard let currentFocus = focusedElement,
+              let currentIndex = focusableElements.firstIndex(of: currentFocus),
+              currentIndex > 0 else {
+            // Focus first element if nothing focused or at top
+            focusedElement = focusableElements.first
+            return
+        }
+        focusedElement = focusableElements[currentIndex - 1]
+    }
+
+    private func moveDown() {
+        guard let currentFocus = focusedElement,
+              let currentIndex = focusableElements.firstIndex(of: currentFocus),
+              currentIndex < focusableElements.count - 1 else {
+            // Focus first element if nothing focused, stay at bottom if at end
+            if focusedElement == nil {
+                focusedElement = focusableElements.first
+            }
+            return
+        }
+        focusedElement = focusableElements[currentIndex + 1]
+    }
+
+    private func activateFocused() {
+        guard let focused = focusedElement else { return }
+
+        switch focused {
+        case .issue(let issueId):
+            // Find and select the issue
+            for group in groups {
+                if let issue = group.issues.first(where: { $0.id == issueId }) {
+                    projectStore.selectedIssue = issue
+                    isInspectorVisible = true
+                    return
+                }
+            }
+        case .addButton(let groupId):
+            // Trigger add issue for this group
+            if let group = groups.first(where: { $0.id == groupId }),
+               let status = statusForGroup(group) {
+                onAddIssue?(status)
+            }
+        }
     }
 
     var body: some View {
@@ -59,11 +259,28 @@ struct GenericIssueListView: View {
                     group: group,
                     showAddButton: showAddButton,
                     onAddIssue: onAddIssue,
-                    isInspectorVisible: $isInspectorVisible
+                    isInspectorVisible: $isInspectorVisible,
+                    focusedElement: $focusedElement
                 )
             }
         }
         .padding(20)
+        .onKeyPress(.upArrow) {
+            moveUp()
+            return .handled
+        }
+        .onKeyPress(.downArrow) {
+            moveDown()
+            return .handled
+        }
+        .onKeyPress(.return) {
+            activateFocused()
+            return .handled
+        }
+        .onKeyPress(.escape) {
+            focusedElement = nil
+            return .handled
+        }
     }
 }
 
@@ -74,9 +291,17 @@ struct GenericIssueColumn: View {
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
     @Binding var isInspectorVisible: Bool
+    @FocusState.Binding var focusedElement: FocusableElement?
 
     private var color: Color {
         colorForGroup(group)
+    }
+
+    private var isAddButtonFocused: Bool {
+        if case .addButton(let id) = focusedElement {
+            return id == group.id
+        }
+        return false
     }
 
     var body: some View {
@@ -106,7 +331,11 @@ struct GenericIssueColumn: View {
             ScrollView {
                 VStack(spacing: 8) {
                     ForEach(group.issues) { issue in
-                        IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
+                        IssueCard(
+                            issue: issue,
+                            isInspectorVisible: $isInspectorVisible,
+                            focusedElement: $focusedElement
+                        )
                     }
 
                     // Add issue button (only for status-based grouping)
@@ -122,10 +351,19 @@ struct GenericIssueColumn: View {
                             }
                             .frame(maxWidth: .infinity)
                             .padding(.vertical, 12)
-                            .background(.bar.opacity(0.5))
+                            .background(isAddButtonFocused ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor).opacity(0.5))
                             .clipShape(RoundedRectangle(cornerRadius: 8))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 8)
+                                    .stroke(isAddButtonFocused ? Color.accentColor : .clear, lineWidth: 2)
+                            )
                         }
                         .buttonStyle(.plain)
+                        .focusable()
+                        .focused($focusedElement, equals: .addButton(group.id))
+                        .onTapGesture {
+                            focusedElement = .addButton(group.id)
+                        }
                     }
 
                     if group.issues.isEmpty {
@@ -149,9 +387,17 @@ struct GenericIssueSection: View {
     let showAddButton: Bool
     let onAddIssue: ((IssueStatus?) -> Void)?
     @Binding var isInspectorVisible: Bool
+    @FocusState.Binding var focusedElement: FocusableElement?
 
     private var color: Color {
         colorForGroup(group)
+    }
+
+    private var isAddButtonFocused: Bool {
+        if case .addButton(let id) = focusedElement {
+            return id == group.id
+        }
+        return false
     }
 
     var body: some View {
@@ -185,13 +431,29 @@ struct GenericIssueSection: View {
                             .foregroundStyle(color)
                     }
                     .buttonStyle(.plain)
+                    .padding(4)
+                    .background(isAddButtonFocused ? Color.accentColor.opacity(0.1) : .clear)
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(isAddButtonFocused ? Color.accentColor : .clear, lineWidth: 2)
+                    )
+                    .focusable()
+                    .focused($focusedElement, equals: .addButton(group.id))
+                    .onTapGesture {
+                        focusedElement = .addButton(group.id)
+                    }
                 }
             }
 
             // Issue cards
             VStack(spacing: 8) {
                 ForEach(group.issues) { issue in
-                    IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
+                    IssueCard(
+                        issue: issue,
+                        isInspectorVisible: $isInspectorVisible,
+                        focusedElement: $focusedElement
+                    )
                 }
 
                 if group.issues.isEmpty {

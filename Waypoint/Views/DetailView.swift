@@ -581,6 +581,7 @@ struct IssueBoardView: View {
 	let issuesByStatus: [IssueStatus: [Issue]]
 	let onAddIssue: (IssueStatus) -> Void
 	@Binding var isInspectorVisible: Bool
+	@FocusState private var focusedElement: FocusableElement?
 
 	var body: some View {
 		HStack(alignment: .top, spacing: 16) {
@@ -590,7 +591,8 @@ struct IssueBoardView: View {
 				issues: issuesByStatus[.todo] ?? [],
 				color: .gray,
 				onAddIssue: onAddIssue,
-				isInspectorVisible: $isInspectorVisible
+				isInspectorVisible: $isInspectorVisible,
+				focusedElement: $focusedElement
 			)
 			IssueColumn(
 				title: "In Progress",
@@ -598,7 +600,8 @@ struct IssueBoardView: View {
 				issues: issuesByStatus[.inProgress] ?? [],
 				color: .orange,
 				onAddIssue: onAddIssue,
-				isInspectorVisible: $isInspectorVisible
+				isInspectorVisible: $isInspectorVisible,
+				focusedElement: $focusedElement
 			)
 			IssueColumn(
 				title: "Review",
@@ -606,7 +609,8 @@ struct IssueBoardView: View {
 				issues: issuesByStatus[.review] ?? [],
 				color: .purple,
 				onAddIssue: onAddIssue,
-				isInspectorVisible: $isInspectorVisible
+				isInspectorVisible: $isInspectorVisible,
+				focusedElement: $focusedElement
 			)
 			IssueColumn(
 				title: "Done",
@@ -614,7 +618,8 @@ struct IssueBoardView: View {
 				issues: issuesByStatus[.done] ?? [],
 				color: .green,
 				onAddIssue: onAddIssue,
-				isInspectorVisible: $isInspectorVisible
+				isInspectorVisible: $isInspectorVisible,
+				focusedElement: $focusedElement
 			)
 		}
 	}
@@ -625,6 +630,7 @@ struct IssueListView: View {
 	let issuesByStatus: [IssueStatus: [Issue]]
 	let onAddIssue: (IssueStatus) -> Void
 	@Binding var isInspectorVisible: Bool
+	@FocusState private var focusedElement: FocusableElement?
 
 	private let statuses: [(status: IssueStatus, title: String, color: Color)] = [
 		(.todo, "To Do", .gray),
@@ -643,7 +649,8 @@ struct IssueListView: View {
 						issues: issuesByStatus[statusInfo.status] ?? [],
 						color: statusInfo.color,
 						onAddIssue: onAddIssue,
-						isInspectorVisible: $isInspectorVisible
+						isInspectorVisible: $isInspectorVisible,
+						focusedElement: $focusedElement
 					)
 				}
 			}
@@ -658,6 +665,7 @@ struct IssueSection: View {
 	let color: Color
 	let onAddIssue: (IssueStatus) -> Void
 	@Binding var isInspectorVisible: Bool
+	@FocusState.Binding var focusedElement: FocusableElement?
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {
@@ -693,7 +701,7 @@ struct IssueSection: View {
 			// Issue cards
 			VStack(spacing: 8) {
 				ForEach(issues) { issue in
-					IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
+					IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible, focusedElement: $focusedElement)
 				}
 
 				if issues.isEmpty {
@@ -702,7 +710,7 @@ struct IssueSection: View {
 						.foregroundStyle(.secondary)
 						.frame(maxWidth: .infinity)
 						.padding(.vertical, 24)
-						.background(.bar.opacity(0.5))
+						.background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
 						.clipShape(RoundedRectangle(cornerRadius: 8))
 				}
 			}
@@ -717,6 +725,7 @@ struct IssueColumn: View {
 	let color: Color
 	let onAddIssue: (IssueStatus) -> Void
 	@Binding var isInspectorVisible: Bool
+	@FocusState.Binding var focusedElement: FocusableElement?
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 12) {
@@ -745,7 +754,7 @@ struct IssueColumn: View {
 			ScrollView {
 				VStack(spacing: 8) {
 					ForEach(issues) { issue in
-						IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible)
+						IssueCard(issue: issue, isInspectorVisible: $isInspectorVisible, focusedElement: $focusedElement)
 					}
 
 					// Add issue button
@@ -760,7 +769,7 @@ struct IssueColumn: View {
 						}
 						.frame(maxWidth: .infinity)
 						.padding(.vertical, 12)
-						.background(.bar.opacity(0.5))
+						.background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
 						.clipShape(RoundedRectangle(cornerRadius: 8))
 					}
 					.buttonStyle(.plain)
@@ -783,6 +792,7 @@ struct IssueCard: View {
 	let issue: Issue
 	@Binding var isInspectorVisible: Bool
 	@Environment(ProjectStore.self) private var projectStore
+	@FocusState.Binding var focusedElement: FocusableElement?
 
 	private var priorityColor: Color {
 		switch issue.priority {
@@ -800,6 +810,13 @@ struct IssueCard: View {
 		case .medium: return "equal"
 		case .low: return "minus"
 		}
+	}
+
+	private var isFocused: Bool {
+		if case .issue(let id) = focusedElement {
+			return id == issue.id
+		}
+		return false
 	}
 
 	var body: some View {
@@ -841,15 +858,18 @@ struct IssueCard: View {
 		}
 		.padding(12)
 		.frame(maxWidth: .infinity, alignment: .leading)
-		.background(.bar)
+		.background(isFocused ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor))
 		.clipShape(RoundedRectangle(cornerRadius: 8))
 		.overlay(
 			RoundedRectangle(cornerRadius: 8)
-				.stroke(priorityColor.opacity(0.3), lineWidth: 1)
+				.stroke(isFocused ? Color.accentColor : priorityColor.opacity(0.3), lineWidth: isFocused ? 2 : 1)
 		)
+		.focusable()
+		.focused($focusedElement, equals: .issue(issue.id))
 		.onTapGesture {
 			projectStore.selectedIssue = issue
 			isInspectorVisible = true
+			focusedElement = .issue(issue.id)
 		}
 	}
 }
