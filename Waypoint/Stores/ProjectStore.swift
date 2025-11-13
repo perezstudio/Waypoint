@@ -14,6 +14,28 @@ enum SystemView: Hashable {
     case upcoming
     case completed
     case projects
+
+    var color: Color {
+        switch self {
+        case .inbox: return .blue
+        case .today: return .yellow
+        case .upcoming: return .red
+        case .completed: return .green
+        case .projects: return .purple
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .inbox: return "tray.fill"
+        case .today:
+            let day = Calendar.current.component(.day, from: Date())
+            return "\(day).calendar"
+        case .upcoming: return "calendar.badge.clock"
+        case .completed: return "checkmark.circle.fill"
+        case .projects: return "folder.fill"
+        }
+    }
 }
 
 enum SelectedView: Hashable {

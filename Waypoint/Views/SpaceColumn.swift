@@ -31,12 +31,6 @@ struct SpaceColumn: View {
 		return tags.filter { $0.space?.id == space.id }
 	}
 
-	// Get current day for calendar icon
-	private var todayCalendarIcon: String {
-		let day = Calendar.current.component(.day, from: Date())
-		return "\(day).calendar"
-	}
-
 	var body: some View {
 		ScrollView(.vertical, showsIndicators: true) {
 			VStack(alignment: .leading, spacing: 20) {
@@ -47,15 +41,15 @@ struct SpaceColumn: View {
 						label: "Inbox",
 						count: 12,
 						isSelected: projectStore.selectedView == .system(.inbox),
-						iconColor: .blue,
+						iconColor: SystemView.inbox.color,
 						action: { projectStore.selectSystemView(.inbox) }
 					)
 					MenuItemView(
-						icon: todayCalendarIcon,
+						icon: SystemView.today.icon,
 						label: "Today",
 						count: 5,
 						isSelected: projectStore.selectedView == .system(.today),
-						iconColor: .yellow,
+						iconColor: SystemView.today.color,
 						action: { projectStore.selectSystemView(.today) }
 					)
 					MenuItemView(
@@ -63,14 +57,14 @@ struct SpaceColumn: View {
 						label: "Upcoming",
 						count: 8,
 						isSelected: projectStore.selectedView == .system(.upcoming),
-						iconColor: .red,
+						iconColor: SystemView.upcoming.color,
 						action: { projectStore.selectSystemView(.upcoming) }
 					)
 					MenuItemView(
 						icon: "checkmark.circle.fill",
 						label: "Completed",
 						isSelected: projectStore.selectedView == .system(.completed),
-						iconColor: .green,
+						iconColor: SystemView.completed.color,
 						action: { projectStore.selectSystemView(.completed) }
 					)
 				}

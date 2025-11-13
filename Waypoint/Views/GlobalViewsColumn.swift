@@ -29,13 +29,15 @@ struct GlobalViewsColumn: View {
 					label: "Inbox",
 					count: 12,
 					isSelected: projectStore.selectedView == .system(.inbox),
+					iconColor: SystemView.inbox.color,
 					action: { projectStore.selectSystemView(.inbox) }
 				)
 				MenuItemView(
-					icon: "calendar",
+					icon: SystemView.today.icon,
 					label: "Today",
 					count: 5,
 					isSelected: projectStore.selectedView == .system(.today),
+					iconColor: SystemView.today.color,
 					action: { projectStore.selectSystemView(.today) }
 				)
 				MenuItemView(
@@ -43,12 +45,14 @@ struct GlobalViewsColumn: View {
 					label: "Upcoming",
 					count: 8,
 					isSelected: projectStore.selectedView == .system(.upcoming),
+					iconColor: SystemView.upcoming.color,
 					action: { projectStore.selectSystemView(.upcoming) }
 				)
 				MenuItemView(
 					icon: "checkmark.circle.fill",
 					label: "Completed",
 					isSelected: projectStore.selectedView == .system(.completed),
+					iconColor: SystemView.completed.color,
 					action: { projectStore.selectSystemView(.completed) }
 				)
 			}

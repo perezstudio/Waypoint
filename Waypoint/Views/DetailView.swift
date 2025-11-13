@@ -18,13 +18,7 @@ struct DetailView: View {
 	private var viewIcon: String {
 		switch projectStore.selectedView {
 		case .system(let systemView):
-			switch systemView {
-			case .inbox: return "tray.fill"
-			case .today: return "calendar"
-			case .upcoming: return "calendar.badge.clock"
-			case .completed: return "checkmark.circle.fill"
-			case .projects: return "folder.fill"
-			}
+			return systemView.icon
 		case .project:
 			return projectStore.selectedProject?.icon ?? "folder.fill"
 		}
@@ -42,6 +36,18 @@ struct DetailView: View {
 			}
 		case .project:
 			return projectStore.selectedProject?.name ?? "Project"
+		}
+	}
+
+	private var viewColor: Color {
+		switch projectStore.selectedView {
+		case .system(let systemView):
+			return systemView.color
+		case .project:
+			if let project = projectStore.selectedProject {
+				return AppColor.color(from: project.color)
+			}
+			return .blue
 		}
 	}
 
@@ -125,7 +131,7 @@ struct DetailView: View {
 
 					Image(systemName: viewIcon)
 						.font(.title2)
-						.foregroundStyle(.secondary)
+						.foregroundStyle(viewColor)
 
 					Text(viewName)
 						.font(.title2)
