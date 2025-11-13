@@ -10,6 +10,7 @@ import SwiftData
 
 struct ContentView: View {
     @Environment(\.modelContext) private var modelContext
+	@Environment(ViewSettingsStore.self) private var viewSettingsStore
     @Query private var items: [Item]
 	@Query private var projects: [Project]
 	@Query private var spaces: [Space]
@@ -64,11 +65,56 @@ struct ContentView: View {
 			CreateIssueSheet()
 		}
 		.background(
-			Button("") { showingCreateIssue = true }
-				.keyboardShortcut("i", modifiers: .command)
-				.hidden()
+			Group {
+				// Create issue shortcut
+				Button("") { showingCreateIssue = true }
+					.keyboardShortcut("n", modifiers: [.command, .shift])
+					.hidden()
+
+				// Navigation shortcuts - Inbox
+				Button("") { projectStore.selectSystemView(.inbox) }
+					.keyboardShortcut("i", modifiers: .command)
+					.hidden()
+
+				// Navigation shortcuts - Today
+				Button("") { projectStore.selectSystemView(.today) }
+					.keyboardShortcut("t", modifiers: .command)
+					.hidden()
+
+				// Navigation shortcuts - Upcoming
+				Button("") { projectStore.selectSystemView(.upcoming) }
+					.keyboardShortcut("u", modifiers: .command)
+					.hidden()
+
+				// Navigation shortcuts - Completed
+				Button("") { projectStore.selectSystemView(.completed) }
+					.keyboardShortcut("d", modifiers: .command)
+					.hidden()
+
+				// View mode shortcuts - List view
+				Button("") { setViewMode(.list) }
+					.keyboardShortcut("1", modifiers: [.command, .shift])
+					.hidden()
+
+				// View mode shortcuts - Board view
+				Button("") { setViewMode(.board) }
+					.keyboardShortcut("2", modifiers: [.command, .shift])
+					.hidden()
+			}
 		)
     }
+
+	private func setViewMode(_ mode: IssuesViewMode) {
+		switch projectStore.selectedView {
+		case .system(let systemView):
+			var settings = viewSettingsStore.getSettings(for: systemView)
+			settings.viewMode = mode
+			viewSettingsStore.updateSettings(settings, for: systemView)
+		case .project:
+			// For now, do nothing for project views - we can add project-specific settings later
+			break
+		}
+	}
 
 	private func createSampleDataIfNeeded() {
 		// Create sample spaces if they don't exist
