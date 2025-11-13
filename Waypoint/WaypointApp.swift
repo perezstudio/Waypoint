@@ -27,12 +27,20 @@ struct WaypointApp: App {
         }
     }()
 
+	@State private var viewSettingsStore = ViewSettingsStore()
+
     var body: some Scene {
         WindowGroup {
             ContentView()
 				.containerBackground(.thinMaterial, for: .window)
+				.environment(viewSettingsStore)
         }
 		.windowStyle(.hiddenTitleBar)
         .modelContainer(sharedModelContainer)
+
+		Settings {
+			SettingsView()
+				.environment(viewSettingsStore)
+		}
     }
 }

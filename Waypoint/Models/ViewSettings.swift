@@ -58,6 +58,12 @@ enum SortDirection: String, CaseIterable, Codable {
     }
 }
 
+enum ControlDisplayMode: String, CaseIterable, Codable {
+    case iconOnly = "Icon Only"
+    case iconAndText = "Icon & Text"
+    case textOnly = "Text Only"
+}
+
 // MARK: - ViewSettings
 
 struct ViewSettings: Codable {
@@ -80,6 +86,15 @@ struct ViewSettings: Codable {
 class ViewSettingsStore {
     private let defaults = UserDefaults.standard
 
+    // Global control display mode
+    var controlDisplayMode: ControlDisplayMode {
+        didSet {
+            if let data = try? JSONEncoder().encode(controlDisplayMode) {
+                defaults.set(data, forKey: "controlDisplayMode")
+            }
+        }
+    }
+
     // Store settings per system view
     var inboxSettings: ViewSettings {
         didSet { saveSettings(inboxSettings, forKey: "viewSettings.inbox") }
@@ -98,6 +113,14 @@ class ViewSettingsStore {
     }
 
     init() {
+        // Load control display mode
+        if let data = UserDefaults.standard.data(forKey: "controlDisplayMode"),
+           let mode = try? JSONDecoder().decode(ControlDisplayMode.self, from: data) {
+            self.controlDisplayMode = mode
+        } else {
+            self.controlDisplayMode = .iconAndText
+        }
+
         self.inboxSettings = Self.loadSettings(forKey: "viewSettings.inbox")
         self.todaySettings = Self.loadSettings(forKey: "viewSettings.today")
         self.upcomingSettings = Self.loadSettings(forKey: "viewSettings.upcoming")

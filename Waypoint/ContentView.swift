@@ -16,7 +16,6 @@ struct ContentView: View {
 	@State private var isInspectorVisible: Bool = false
 	@State private var isSidebarCollapsed: Bool = false
 	@State private var projectStore = ProjectStore()
-	@State private var viewSettingsStore = ViewSettingsStore()
 	@State private var showingCreateIssue: Bool = false
 
 	var body: some View {
@@ -26,7 +25,6 @@ struct ContentView: View {
 			isSidebarCollapsed: $isSidebarCollapsed
 		)
 		.environment(projectStore)
-		.environment(viewSettingsStore)
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
 		.ignoresSafeArea()
 		.onAppear {

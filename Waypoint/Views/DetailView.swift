@@ -13,7 +13,6 @@ struct DetailView: View {
 	@Binding var isSidebarCollapsed: Bool
 	@Environment(ProjectStore.self) private var projectStore
 	@Environment(ViewSettingsStore.self) private var viewSettingsStore
-	@State private var showingViewSettings = false
 
 	// Helper computed properties for view info
 	private var viewIcon: String {
@@ -107,7 +106,7 @@ struct DetailView: View {
 	var body: some View {
 		VStack(spacing: 0) {
 			// Header toolbar
-			HStack {
+			HStack(alignment: .center) {
 				// Left: Sidebar Toggle (when collapsed) + Icon + View Name
 				HStack(spacing: 12) {
 					// Sidebar toggle button - only show when sidebar is collapsed
@@ -138,27 +137,57 @@ struct DetailView: View {
 
 				// Middle: View Settings Controls (when applicable)
 				if shouldShowViewSettingsToolbar, let settings = currentViewSettings {
-					HStack(spacing: 6) {
-						// View mode toggle (List/Board)
-						Picker("", selection: Binding(
-							get: { settings.wrappedValue.viewMode },
-							set: {
-								var newSettings = settings.wrappedValue
-								newSettings.viewMode = $0
-								settings.wrappedValue = newSettings
+					HStack(alignment: .center, spacing: 24) {
+						// View mode picker
+						VStack(alignment: .center, spacing: 4) {
+							if viewSettingsStore.controlDisplayMode == .textOnly {
+								Picker("", selection: Binding(
+									get: { settings.wrappedValue.viewMode },
+									set: {
+										var newSettings = settings.wrappedValue
+										newSettings.viewMode = $0
+										settings.wrappedValue = newSettings
+									}
+								)) {
+									ForEach(IssuesViewMode.allCases, id: \.self) { mode in
+										Text(mode.rawValue).tag(mode)
+									}
+								}
+								.labelsHidden()
+								.pickerStyle(.segmented)
+								.help("View mode")
+							} else {
+								Picker("", selection: Binding(
+									get: { settings.wrappedValue.viewMode },
+									set: {
+										var newSettings = settings.wrappedValue
+										newSettings.viewMode = $0
+										settings.wrappedValue = newSettings
+									}
+								)) {
+									ForEach(IssuesViewMode.allCases, id: \.self) { mode in
+										Image(systemName: mode == .board ? "square.grid.2x2" : "list.bullet")
+											.tag(mode)
+									}
+								}
+								.labelsHidden()
+								.pickerStyle(.segmented)
+								.help("View mode")
 							}
-						)) {
-							ForEach(IssuesViewMode.allCases, id: \.self) { mode in
-								Image(systemName: mode == .board ? "square.grid.2x2" : "list.bullet")
-									.tag(mode)
+
+							if viewSettingsStore.controlDisplayMode != .iconOnly {
+								Text("View")
+									.font(.caption)
+									.foregroundStyle(.secondary)
 							}
 						}
-						.labelsHidden()
-						.pickerStyle(.segmented)
-						.help("View mode")
 
-						// Group by selector
-						Menu {
+						// Group by menu
+						ViewControlMenu(
+							icon: settings.wrappedValue.groupBy.icon,
+							text: "Group",
+							selectedText: settings.wrappedValue.groupBy.rawValue
+						) {
 							ForEach(IssueGrouping.allCases, id: \.self) { grouping in
 								Button(action: {
 									var newSettings = settings.wrappedValue
@@ -175,62 +204,59 @@ struct DetailView: View {
 									}
 								}
 							}
-						} label: {
-							Image(systemName: settings.wrappedValue.groupBy.icon)
-								.padding(6)
-								.background(.bar)
-								.clipShape(RoundedRectangle(cornerRadius: 5))
 						}
-						.buttonStyle(.plain)
-						.help("Group by: \(settings.wrappedValue.groupBy.rawValue)")
 
-						// Sort by selector
-						Menu {
-							ForEach(IssueSorting.allCases, id: \.self) { sorting in
-								Button(action: {
-									var newSettings = settings.wrappedValue
-									newSettings.sortBy = sorting
-									settings.wrappedValue = newSettings
-								}) {
-									HStack {
-										Image(systemName: sorting.icon)
-										Text(sorting.rawValue)
-										if settings.wrappedValue.sortBy == sorting {
-											Spacer()
-											Image(systemName: "checkmark")
+						// Sort controls
+						VStack(alignment: .center, spacing: 4) {
+							HStack(spacing: 6) {
+								// Sort by menu
+								ViewControlMenu(
+									icon: settings.wrappedValue.sortBy.icon,
+									text: "Sort",
+									selectedText: settings.wrappedValue.sortBy.rawValue,
+									showLabel: false
+								) {
+									ForEach(IssueSorting.allCases, id: \.self) { sorting in
+										Button(action: {
+											var newSettings = settings.wrappedValue
+											newSettings.sortBy = sorting
+											settings.wrappedValue = newSettings
+										}) {
+											HStack {
+												Image(systemName: sorting.icon)
+												Text(sorting.rawValue)
+												if settings.wrappedValue.sortBy == sorting {
+													Spacer()
+													Image(systemName: "checkmark")
+												}
+											}
 										}
 									}
 								}
+
+								// Sort direction button
+								ViewControlButton(
+									icon: settings.wrappedValue.sortDirection.icon,
+									text: settings.wrappedValue.sortDirection.rawValue,
+									showLabel: false
+								) {
+									var newSettings = settings.wrappedValue
+									newSettings.sortDirection = newSettings.sortDirection == .ascending ? .descending : .ascending
+									settings.wrappedValue = newSettings
+								}
 							}
-						} label: {
-							Image(systemName: settings.wrappedValue.sortBy.icon)
-								.padding(6)
-								.background(.bar)
-								.clipShape(RoundedRectangle(cornerRadius: 5))
-						}
-						.buttonStyle(.plain)
-						.help("Sort by: \(settings.wrappedValue.sortBy.rawValue)")
 
-						// Sort direction toggle
-						Button(action: {
-							var newSettings = settings.wrappedValue
-							newSettings.sortDirection = newSettings.sortDirection == .ascending ? .descending : .ascending
-							settings.wrappedValue = newSettings
-						}) {
-							Image(systemName: settings.wrappedValue.sortDirection.icon)
-								.padding(6)
-								.background(.bar)
-								.clipShape(RoundedRectangle(cornerRadius: 5))
+							if viewSettingsStore.controlDisplayMode != .iconOnly {
+								Text("Sort")
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
 						}
-						.buttonStyle(.plain)
-						.help("Sort direction: \(settings.wrappedValue.sortDirection.rawValue)")
 					}
-
-					Divider()
 				}
 
-				// Right: Segmented Picker + View Settings + Inspector Toggle
-				HStack(spacing: 12) {
+				// Right: Segmented Picker + Inspector Toggle
+				HStack(alignment: .center, spacing: 24) {
 					// Segmented picker for project views (only show if project is selected)
 					if shouldShowSegmentedPicker {
 						Picker("", selection: Binding(
@@ -245,29 +271,25 @@ struct DetailView: View {
 						.pickerStyle(.segmented)
 					}
 
-					// View settings button
-					IconButton(
-						icon: "ellipsis.circle",
-						action: {
-							showingViewSettings.toggle()
-						},
-						tooltip: "View Settings"
-					)
-					.popover(isPresented: $showingViewSettings, arrowEdge: .bottom) {
-						ViewSettingsPopover()
-					}
-
 					// Inspector toggle button
-					IconButton(
-						icon: "sidebar.right",
-						action: {
-							withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-								isInspectorVisible.toggle()
-							}
-						},
-						isActive: isInspectorVisible,
-						tooltip: "Toggle Inspector"
-					)
+					VStack(alignment: .center, spacing: 4) {
+						IconButton(
+							icon: "sidebar.right",
+							action: {
+								withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+									isInspectorVisible.toggle()
+								}
+							},
+							isActive: isInspectorVisible,
+							tooltip: "Toggle Inspector"
+						)
+
+						if viewSettingsStore.controlDisplayMode != .iconOnly {
+							Text("Inspector")
+								.font(.caption)
+								.foregroundStyle(.secondary)
+						}
+					}
 				}
 			}
 			.padding(.horizontal, 20)
