@@ -203,7 +203,12 @@ class DetailViewSplitViewController: NSSplitViewController {
 // MARK: - Custom Split View with Visible Divider
 class DetailInspectorSplitView: NSSplitView {
 	override var dividerColor: NSColor {
-		return NSColor.separatorColor
+		// Use a more opaque color to match SwiftUI Divider
+		if #available(macOS 14.0, *) {
+			return NSColor.separatorColor
+		} else {
+			return NSColor.separatorColor
+		}
 	}
 
 	override var dividerThickness: CGFloat {
@@ -211,7 +216,51 @@ class DetailInspectorSplitView: NSSplitView {
 	}
 
 	override func drawDivider(in rect: NSRect) {
+		// Calculate inspector width (second subview)
+		let totalWidth = bounds.width
+		let contentWidth = subviews.first?.frame.width ?? 0
+		let inspectorWidth = totalWidth - contentWidth
+
+		// Calculate opacity based on inspector width
+		// Fade in/out smoothly as inspector opens/closes
+		let visibilityThreshold: CGFloat = 50 // Start fading when inspector is less than 50px wide
+		let opacity: CGFloat
+
+		if inspectorWidth <= 10 {
+			// Fully collapsed - no divider
+			opacity = 0.0
+		} else if inspectorWidth < visibilityThreshold {
+			// Fading in/out - proportional to width
+			opacity = inspectorWidth / visibilityThreshold
+		} else {
+			// Fully visible
+			opacity = 1.0
+		}
+
+		// Use a darker, more visible color similar to SwiftUI Divider
+		// SwiftUI Divider uses a semi-transparent black/white based on appearance
+		let dividerColor: NSColor
+		if NSApp.effectiveAppearance.name == .darkAqua {
+			// Dark mode - lighter separator
+			dividerColor = NSColor.white.withAlphaComponent(0.15 * opacity)
+		} else {
+			// Light mode - darker separator
+			dividerColor = NSColor.black.withAlphaComponent(0.12 * opacity)
+		}
+
 		dividerColor.setFill()
 		rect.fill()
+	}
+
+	override func resizeSubviews(withOldSize oldSize: NSSize) {
+		super.resizeSubviews(withOldSize: oldSize)
+		// Redraw divider when subviews resize to update opacity during animation
+		needsDisplay = true
+	}
+
+	override func setPosition(_ position: CGFloat, ofDividerAt dividerIndex: Int) {
+		super.setPosition(position, ofDividerAt: dividerIndex)
+		// Redraw divider when position changes to update opacity during animation
+		needsDisplay = true
 	}
 }

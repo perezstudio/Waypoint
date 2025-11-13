@@ -51,6 +51,21 @@ struct InspectorView: View {
 					.fontWeight(.semibold)
 
 				Spacer()
+
+				// Close button - only show when inspector has content or is visible
+				IconButton(
+					icon: "xmark",
+					action: {
+						withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+							isVisible = false
+						}
+					},
+					tooltip: "Close Inspector"
+				)
+				.transition(.asymmetric(
+					insertion: .move(edge: .trailing).combined(with: .opacity),
+					removal: .move(edge: .trailing).combined(with: .opacity)
+				))
 			}
 			.padding(.horizontal, 20)
 			.padding(.vertical, 16)

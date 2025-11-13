@@ -30,6 +30,16 @@ struct ContentView: View {
 		.onAppear {
 			createSampleDataIfNeeded()
 		}
+		.onChange(of: projectStore.selectedView) { oldValue, newValue in
+			// Close inspector and clear selected issue when switching views/tabs from sidebar
+			if isInspectorVisible {
+				withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+					isInspectorVisible = false
+				}
+			}
+			// Clear selected issue so inspector starts fresh in new view
+			projectStore.selectedIssue = nil
+		}
 		.configureWindow { window in
 			// Remove toolbar completely
 			window.toolbar = nil

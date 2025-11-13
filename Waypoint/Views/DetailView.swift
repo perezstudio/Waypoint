@@ -285,26 +285,33 @@ struct DetailView: View {
 						.pickerStyle(.segmented)
 					}
 
-					// Inspector toggle button
-					VStack(alignment: .center, spacing: 4) {
-						IconButton(
-							icon: "sidebar.right",
-							action: {
-								withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-									isInspectorVisible.toggle()
-								}
-							},
-							isActive: isInspectorVisible,
-							tooltip: "Toggle Inspector"
-						)
+					// Inspector toggle button - hide when inspector is open
+					if !isInspectorVisible {
+						VStack(alignment: .center, spacing: 4) {
+							IconButton(
+								icon: "sidebar.right",
+								action: {
+									withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+										isInspectorVisible.toggle()
+									}
+								},
+								isActive: isInspectorVisible,
+								tooltip: "Toggle Inspector"
+							)
 
-						if viewSettingsStore.controlDisplayMode != .iconOnly {
-							Text("Inspector")
-								.font(.caption)
-								.foregroundStyle(.secondary)
+							if viewSettingsStore.controlDisplayMode != .iconOnly {
+								Text("Inspector")
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
 						}
+						.transition(.asymmetric(
+							insertion: .move(edge: .trailing).combined(with: .opacity),
+							removal: .move(edge: .trailing).combined(with: .opacity)
+						))
 					}
 				}
+				.animation(.spring(response: 0.3, dampingFraction: 0.8), value: isInspectorVisible)
 			}
 			.padding(.horizontal, 20)
 			.padding(.vertical, 16)
