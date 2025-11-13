@@ -37,6 +37,15 @@ The app uses a three-pane HStack layout:
 
 ## Coding Standards
 
+### Validation Requirements
+**IMPORTANT**: Before declaring any implementation complete or "ready", you MUST:
+1. Build the project using `xcodebuild` to verify compilation
+2. Ensure the build succeeds without errors
+3. Only after successful build can you state the implementation is ready
+4. Command: `cd .. && xcodebuild -project Waypoint.xcodeproj -scheme Waypoint -configuration Debug build`
+
+This validation step is mandatory for all code changes, no matter how small.
+
 ### SwiftUI Conventions
 - Use `struct` for all views conforming to `View` protocol
 - Include `#Preview` macros for all view files
