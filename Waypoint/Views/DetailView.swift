@@ -12,6 +12,7 @@ struct DetailView: View {
 	@Binding var isInspectorVisible: Bool
 	@Binding var isSidebarCollapsed: Bool
 	@Environment(ProjectStore.self) private var projectStore
+	@Environment(ViewSettingsStore.self) private var viewSettingsStore
 	@State private var showingViewSettings = false
 
 	// Helper computed properties for view info
@@ -52,6 +53,57 @@ struct DetailView: View {
 		return false
 	}
 
+	private var shouldShowViewSettingsToolbar: Bool {
+		switch projectStore.selectedView {
+		case .system(let systemView):
+			// Show for inbox, today, upcoming, completed
+			return systemView != .projects
+		case .project:
+			// Show for project issues view
+			return projectStore.selectedViewType == .issues
+		}
+	}
+
+	private var currentViewSettings: Binding<ViewSettings>? {
+		switch projectStore.selectedView {
+		case .system(let systemView):
+			switch systemView {
+			case .inbox:
+				return Binding(
+					get: { viewSettingsStore.inboxSettings },
+					set: { viewSettingsStore.updateSettings($0, for: .inbox) }
+				)
+			case .today:
+				return Binding(
+					get: { viewSettingsStore.todaySettings },
+					set: { viewSettingsStore.updateSettings($0, for: .today) }
+				)
+			case .upcoming:
+				return Binding(
+					get: { viewSettingsStore.upcomingSettings },
+					set: { viewSettingsStore.updateSettings($0, for: .upcoming) }
+				)
+			case .completed:
+				return Binding(
+					get: { viewSettingsStore.completedSettings },
+					set: { viewSettingsStore.updateSettings($0, for: .completed) }
+				)
+			case .projects:
+				return nil
+			}
+		case .project:
+			// For now, return nil for projects - we can add project-specific settings later
+			return nil
+		}
+	}
+
+	private var currentSystemView: SystemView? {
+		if case .system(let systemView) = projectStore.selectedView {
+			return systemView
+		}
+		return nil
+	}
+
 	var body: some View {
 		VStack(spacing: 0) {
 			// Header toolbar
@@ -84,11 +136,104 @@ struct DetailView: View {
 
 				Spacer()
 
+				// Middle: View Settings Controls (when applicable)
+				if shouldShowViewSettingsToolbar, let settings = currentViewSettings {
+					HStack(spacing: 6) {
+						// View mode toggle (List/Board)
+						Picker("", selection: Binding(
+							get: { settings.wrappedValue.viewMode },
+							set: {
+								var newSettings = settings.wrappedValue
+								newSettings.viewMode = $0
+								settings.wrappedValue = newSettings
+							}
+						)) {
+							ForEach(IssuesViewMode.allCases, id: \.self) { mode in
+								Image(systemName: mode == .board ? "square.grid.2x2" : "list.bullet")
+									.tag(mode)
+							}
+						}
+						.labelsHidden()
+						.pickerStyle(.segmented)
+						.help("View mode")
+
+						// Group by selector
+						Menu {
+							ForEach(IssueGrouping.allCases, id: \.self) { grouping in
+								Button(action: {
+									var newSettings = settings.wrappedValue
+									newSettings.groupBy = grouping
+									settings.wrappedValue = newSettings
+								}) {
+									HStack {
+										Image(systemName: grouping.icon)
+										Text(grouping.rawValue)
+										if settings.wrappedValue.groupBy == grouping {
+											Spacer()
+											Image(systemName: "checkmark")
+										}
+									}
+								}
+							}
+						} label: {
+							Image(systemName: settings.wrappedValue.groupBy.icon)
+								.padding(6)
+								.background(.bar)
+								.clipShape(RoundedRectangle(cornerRadius: 5))
+						}
+						.buttonStyle(.plain)
+						.help("Group by: \(settings.wrappedValue.groupBy.rawValue)")
+
+						// Sort by selector
+						Menu {
+							ForEach(IssueSorting.allCases, id: \.self) { sorting in
+								Button(action: {
+									var newSettings = settings.wrappedValue
+									newSettings.sortBy = sorting
+									settings.wrappedValue = newSettings
+								}) {
+									HStack {
+										Image(systemName: sorting.icon)
+										Text(sorting.rawValue)
+										if settings.wrappedValue.sortBy == sorting {
+											Spacer()
+											Image(systemName: "checkmark")
+										}
+									}
+								}
+							}
+						} label: {
+							Image(systemName: settings.wrappedValue.sortBy.icon)
+								.padding(6)
+								.background(.bar)
+								.clipShape(RoundedRectangle(cornerRadius: 5))
+						}
+						.buttonStyle(.plain)
+						.help("Sort by: \(settings.wrappedValue.sortBy.rawValue)")
+
+						// Sort direction toggle
+						Button(action: {
+							var newSettings = settings.wrappedValue
+							newSettings.sortDirection = newSettings.sortDirection == .ascending ? .descending : .ascending
+							settings.wrappedValue = newSettings
+						}) {
+							Image(systemName: settings.wrappedValue.sortDirection.icon)
+								.padding(6)
+								.background(.bar)
+								.clipShape(RoundedRectangle(cornerRadius: 5))
+						}
+						.buttonStyle(.plain)
+						.help("Sort direction: \(settings.wrappedValue.sortDirection.rawValue)")
+					}
+
+					Divider()
+				}
+
 				// Right: Segmented Picker + View Settings + Inspector Toggle
 				HStack(spacing: 12) {
 					// Segmented picker for project views (only show if project is selected)
 					if shouldShowSegmentedPicker {
-						Picker("View", selection: Binding(
+						Picker("", selection: Binding(
 							get: { projectStore.selectedViewType },
 							set: { projectStore.selectedViewType = $0 }
 						)) {
@@ -96,8 +241,8 @@ struct DetailView: View {
 								Text(viewType.rawValue).tag(viewType)
 							}
 						}
+						.labelsHidden()
 						.pickerStyle(.segmented)
-						.frame(width: 280)
 					}
 
 					// View settings button
@@ -127,35 +272,38 @@ struct DetailView: View {
 			}
 			.padding(.horizontal, 20)
 			.padding(.vertical, 16)
+			.frame(maxHeight: 60)
+			.clipped()
 
 			Divider()
 
 			// Main content area
-			ScrollView {
-				VStack(alignment: .leading, spacing: 20) {
-					// Content varies based on selected view
-					switch projectStore.selectedView {
-					case .system(let systemView):
-						systemViewContent(for: systemView)
-					case .project:
+			// System views manage their own layout, project views need ScrollView
+			switch projectStore.selectedView {
+			case .system(let systemView):
+				systemViewContent(for: systemView)
+					.frame(maxWidth: .infinity, maxHeight: .infinity)
+			case .project:
+				ScrollView {
+					VStack(alignment: .leading, spacing: 20) {
 						projectViewContent()
 					}
+					.frame(maxWidth: .infinity, alignment: .leading)
+					.padding(20)
 				}
-				.frame(maxWidth: .infinity, alignment: .leading)
-				.padding(20)
 			}
 		}
+		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.clipped()
 	}
 
 	@ViewBuilder
 	private func systemViewContent(for systemView: SystemView) -> some View {
 		switch systemView {
 		case .inbox:
-			Text("Inbox Content")
-				.foregroundStyle(.secondary)
+			InboxView()
 		case .today:
-			Text("Today's Tasks")
-				.foregroundStyle(.secondary)
+			TodayView()
 		case .upcoming:
 			Text("Upcoming Tasks")
 				.foregroundStyle(.secondary)

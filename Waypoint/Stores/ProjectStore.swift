@@ -27,7 +27,7 @@ enum ProjectViewType: String, CaseIterable {
     case updates = "Updates"
 }
 
-enum IssuesViewMode: String, CaseIterable {
+enum IssuesViewMode: String, CaseIterable, Codable {
     case list = "List"
     case board = "Board"
 }
