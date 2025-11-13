@@ -40,7 +40,8 @@ class DetailViewSplitViewController: NSSplitViewController {
 
 		// Inspector split view item (right side) - resizable with constraints
 		let inspectorItem = NSSplitViewItem(viewController: inspectorViewController)
-		inspectorItem.minimumThickness = 200
+		// Don't set minimumThickness here - handle it in constrainSplitPosition instead
+		// This allows the inspector to collapse fully when dragged
 		inspectorItem.maximumThickness = 400
 		inspectorItem.canCollapse = true
 		inspectorItem.collapseBehavior = .preferResizingSiblingsWithFixedSplitView
@@ -75,6 +76,11 @@ class DetailViewSplitViewController: NSSplitViewController {
 
 		if visible && !isCurrentlyVisible {
 			// Show inspector
+			// Ensure saved width is valid
+			if savedInspectorWidth < 200 || savedInspectorWidth > 400 {
+				savedInspectorWidth = 280 // Reset to default
+			}
+
 			let newPosition = totalWidth - savedInspectorWidth
 			if animated {
 				NSAnimationContext.runAnimationGroup({ context in
@@ -131,18 +137,28 @@ class DetailViewSplitViewController: NSSplitViewController {
 		let totalWidth = splitView.bounds.width
 		let maxInspectorWidth: CGFloat = 400
 		let minInspectorWidth: CGFloat = 200
+		let collapseThreshold: CGFloat = 100 // If dragged within 100px of edge, allow collapse
 
 		// Calculate the min position (when inspector is at max width)
 		let minPosition = totalWidth - maxInspectorWidth
 
-		// Calculate the max position (when inspector is at min width or collapsed)
-		let maxPosition = totalWidth - minInspectorWidth
+		// Calculate the max position for minimum width
+		let maxPositionForMinWidth = totalWidth - minInspectorWidth
+
+		// Calculate the collapse threshold position
+		let collapseThresholdPosition = totalWidth - collapseThreshold
 
 		// Constrain the proposed position
 		if proposedPosition < minPosition {
+			// Don't allow inspector to be larger than max width
 			return minPosition
-		} else if proposedPosition > totalWidth {
-			return totalWidth // Allow full collapse
+		} else if proposedPosition >= collapseThresholdPosition {
+			// User is dragging close to the edge - allow full collapse
+			return totalWidth
+		} else if proposedPosition > maxPositionForMinWidth {
+			// User is between min width and collapse threshold
+			// Snap to min width to prevent awkward in-between sizes
+			return maxPositionForMinWidth
 		}
 
 		return proposedPosition
@@ -157,8 +173,8 @@ class DetailViewSplitViewController: NSSplitViewController {
 		let contentWidth = splitView.subviews.first?.frame.width ?? 0
 		let inspectorWidth = totalWidth - contentWidth
 
-		if inspectorWidth > 10 {
-			// Inspector is visible - save its width
+		if inspectorWidth > 50 {
+			// Inspector is visible and has meaningful width - save it
 			savedInspectorWidth = inspectorWidth
 
 			// Update binding to reflect actual state asynchronously
@@ -167,14 +183,20 @@ class DetailViewSplitViewController: NSSplitViewController {
 					self?.isInspectorVisible?.wrappedValue = true
 				}
 			}
-		} else {
-			// Inspector is collapsed
+		} else if inspectorWidth <= 10 {
+			// Inspector is fully collapsed
+			// Ensure we have a valid saved width before marking as closed
+			if savedInspectorWidth < 200 {
+				savedInspectorWidth = 280 // Reset to default if invalid
+			}
+
 			if isInspectorVisible?.wrappedValue == true {
 				DispatchQueue.main.async { [weak self] in
 					self?.isInspectorVisible?.wrappedValue = false
 				}
 			}
 		}
+		// Note: If inspector width is between 10 and 50, we're in transition - don't update state
 	}
 }
 
