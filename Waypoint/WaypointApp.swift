@@ -11,18 +11,14 @@ import SwiftData
 @main
 struct WaypointApp: App {
     var sharedModelContainer: ModelContainer = {
-        let schema = Schema([
-            Item.self,
-            Project.self,
-            Issue.self,
-            Tag.self,
-            Space.self,
-        ])
-        let modelConfiguration = ModelConfiguration(schema: schema, isStoredInMemoryOnly: false)
-
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            // Use migration plan to handle schema changes
+            return try ModelContainer(
+                for: Project.self, Issue.self, Item.self, Tag.self, Space.self,
+                migrationPlan: WaypointMigrationPlan.self
+            )
         } catch {
+            print("Failed to create ModelContainer with migration: \(error)")
             fatalError("Could not create ModelContainer: \(error)")
         }
     }()

@@ -64,6 +64,38 @@ enum ControlDisplayMode: String, CaseIterable, Codable {
     case textOnly = "Text Only"
 }
 
+enum ProjectGrouping: String, CaseIterable, Codable {
+    case status = "Status"
+    case space = "Space"
+    case issueCount = "Issue Count"
+    case createdDate = "Created Date"
+    case none = "None"
+
+    var icon: String {
+        switch self {
+        case .status: return "checkmark.circle"
+        case .space: return "square.stack.3d.up"
+        case .issueCount: return "number.circle"
+        case .createdDate: return "calendar"
+        case .none: return "list.bullet"
+        }
+    }
+}
+
+enum ProjectSorting: String, CaseIterable, Codable {
+    case name = "Name"
+    case createdAt = "Created"
+    case issueCount = "Issue Count"
+
+    var icon: String {
+        switch self {
+        case .name: return "textformat"
+        case .createdAt: return "clock"
+        case .issueCount: return "number.circle"
+        }
+    }
+}
+
 // MARK: - ViewSettings
 
 struct ViewSettings: Codable {
@@ -77,6 +109,20 @@ struct ViewSettings: Codable {
         groupBy: .status,
         sortBy: .priority,
         sortDirection: .descending
+    )
+}
+
+struct ProjectViewSettings: Codable {
+    var viewMode: IssuesViewMode
+    var groupBy: ProjectGrouping
+    var sortBy: ProjectSorting
+    var sortDirection: SortDirection
+
+    static let defaults = ProjectViewSettings(
+        viewMode: .list,
+        groupBy: .status,
+        sortBy: .name,
+        sortDirection: .ascending
     )
 }
 
@@ -112,6 +158,10 @@ class ViewSettingsStore {
         didSet { saveSettings(completedSettings, forKey: "viewSettings.completed") }
     }
 
+    var projectsSettings: ProjectViewSettings {
+        didSet { saveProjectSettings(projectsSettings, forKey: "viewSettings.projects") }
+    }
+
     init() {
         // Load control display mode
         if let data = UserDefaults.standard.data(forKey: "controlDisplayMode"),
@@ -125,6 +175,7 @@ class ViewSettingsStore {
         self.todaySettings = Self.loadSettings(forKey: "viewSettings.today")
         self.upcomingSettings = Self.loadSettings(forKey: "viewSettings.upcoming")
         self.completedSettings = Self.loadSettings(forKey: "viewSettings.completed")
+        self.projectsSettings = Self.loadProjectSettings(forKey: "viewSettings.projects")
     }
 
     func getSettings(for systemView: SystemView) -> ViewSettings {
@@ -156,6 +207,20 @@ class ViewSettingsStore {
     }
 
     private func saveSettings(_ settings: ViewSettings, forKey key: String) {
+        if let data = try? JSONEncoder().encode(settings) {
+            defaults.set(data, forKey: key)
+        }
+    }
+
+    private static func loadProjectSettings(forKey key: String) -> ProjectViewSettings {
+        guard let data = UserDefaults.standard.data(forKey: key),
+              let settings = try? JSONDecoder().decode(ProjectViewSettings.self, from: data) else {
+            return .defaults
+        }
+        return settings
+    }
+
+    private func saveProjectSettings(_ settings: ProjectViewSettings, forKey key: String) {
         if let data = try? JSONEncoder().encode(settings) {
             defaults.set(data, forKey: key)
         }

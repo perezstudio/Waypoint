@@ -14,6 +14,7 @@ final class Project {
     var name: String
     var icon: String  // SF Symbol name
     var color: String  // Hex color code
+    var status: Status
     var createdAt: Date
     var updatedAt: Date
 
@@ -22,11 +23,12 @@ final class Project {
 
     var space: Space?
 
-    init(name: String, icon: String = "folder.fill", color: String = "#007AFF", space: Space? = nil) {
+    init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: Space? = nil) {
         self.id = UUID()
         self.name = name
         self.icon = icon
         self.color = color
+        self.status = status
         self.createdAt = Date()
         self.updatedAt = Date()
         self.space = space

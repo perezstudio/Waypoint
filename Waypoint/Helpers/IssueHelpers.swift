@@ -42,7 +42,7 @@ struct IssueGrouper {
     }
 
     private static func groupByStatus(_ issues: [Issue]) -> [IssueGroup] {
-        let statusOrder: [IssueStatus] = [.todo, .inProgress, .review, .done]
+        let statusOrder: [Status] = [.todo, .inProgress, .review, .done]
         var groups: [IssueGroup] = []
 
         for (index, status) in statusOrder.enumerated() {
@@ -274,7 +274,7 @@ struct IssueSorter {
                 return index1 < index2
             }
         case .status:
-            let statusOrder: [IssueStatus] = [.todo, .inProgress, .review, .done]
+            let statusOrder: [Status] = [.todo, .inProgress, .review, .done]
             sorted = issues.sorted { issue1, issue2 in
                 let index1 = statusOrder.firstIndex(of: issue1.status) ?? statusOrder.count
                 let index2 = statusOrder.firstIndex(of: issue2.status) ?? statusOrder.count

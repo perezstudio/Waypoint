@@ -61,6 +61,7 @@ class ProjectStore {
     var selectedViewType: ProjectViewType = .overview
     var issuesViewMode: IssuesViewMode = .board
     var selectedIssue: Issue?
+    var cameFromProjectsList: Bool = false
 
     init() {}
 
@@ -68,9 +69,10 @@ class ProjectStore {
         self.selectedView = .system(systemView)
         self.selectedProject = nil
         self.selectedViewType = .overview
+        self.cameFromProjectsList = false
     }
 
-    func selectProject(_ project: Project?) {
+    func selectProject(_ project: Project?, cameFromProjectsList: Bool = false) {
         guard let project = project else {
             selectSystemView(.inbox)
             return
@@ -79,5 +81,6 @@ class ProjectStore {
         self.selectedProject = project
         // Reset to overview when selecting a new project
         self.selectedViewType = .overview
+        self.cameFromProjectsList = cameFromProjectsList
     }
 }

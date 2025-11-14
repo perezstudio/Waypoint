@@ -31,7 +31,6 @@ struct SidebarView: View {
                         isSidebarCollapsed.toggle()
                     }, tooltip: "Toggle Sidebar")
             }
-            .frame(height: 60)
             .padding(.horizontal, 16)
             .padding(.top, 12)
             .padding(.bottom, 20)

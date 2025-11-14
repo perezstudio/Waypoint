@@ -1,25 +1,41 @@
 //
-//  GenericIssueViews.swift
+//  GenericProjectViews.swift
 //  Waypoint
+//
+//  Created by Claude on 11/13/25.
 //
 
 import SwiftUI
 
-// MARK: - Generic Board View
+// MARK: - Helper Functions
 
-struct GenericIssueBoardView: View {
-    let groups: [IssueGroup]
+private func colorForProjectGroup(_ group: ProjectGroup) -> Color {
+    // Determine color based on group title/type
+    switch group.title.lowercased() {
+    // Status colors
+    case "to do": return .gray
+    case "in progress": return .orange
+    case "review": return .purple
+    case "done": return .green
+    // Other grouping types - use a default color scheme
+    default: return .blue
+    }
+}
+
+// MARK: - Generic Project Board View
+
+struct GenericProjectBoardView: View {
+    let groups: [ProjectGroup]
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
-    @Binding var isInspectorVisible: Bool
+    let onAddProject: (() -> Void)?
+    let onSelectProject: (Project) -> Void
     @FocusState private var focusedElement: FocusableElement?
-    @Environment(ProjectStore.self) private var projectStore
 
-    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((Status?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
+    init(groups: [ProjectGroup], showAddButton: Bool = true, onAddProject: (() -> Void)? = nil, onSelectProject: @escaping (Project) -> Void) {
         self.groups = groups
         self.showAddButton = showAddButton
-        self.onAddIssue = onAddIssue
-        self._isInspectorVisible = isInspectorVisible
+        self.onAddProject = onAddProject
+        self.onSelectProject = onSelectProject
     }
 
     // Build 2D grid structure: array of columns, each containing array of elements
@@ -27,12 +43,12 @@ struct GenericIssueBoardView: View {
         var grid: [[FocusableElement]] = []
         for group in groups.sorted(by: { $0.order < $1.order }) {
             var column: [FocusableElement] = []
-            // Add all issues
-            for issue in group.issues {
-                column.append(.issue(issue.id))
+            // Add all projects
+            for project in group.projects {
+                column.append(.project(project.id))
             }
             // Add the add button if applicable
-            if showAddButton && statusForGroup(group) != nil {
+            if showAddButton {
                 column.append(.addButton(group.id))
             }
             grid.append(column)
@@ -113,23 +129,19 @@ struct GenericIssueBoardView: View {
         guard let focused = focusedElement else { return }
 
         switch focused {
-        case .issue(let issueId):
-            // Find and select the issue
+        case .project(let projectId):
+            // Find and select the project
             for group in groups {
-                if let issue = group.issues.first(where: { $0.id == issueId }) {
-                    projectStore.selectedIssue = issue
-                    isInspectorVisible = true
+                if let project = group.projects.first(where: { $0.id == projectId }) {
+                    onSelectProject(project)
                     return
                 }
             }
-        case .addButton(let groupId):
-            // Trigger add issue for this group
-            if let group = groups.first(where: { $0.id == groupId }),
-               let status = statusForGroup(group) {
-                onAddIssue?(status)
-            }
-        case .project:
-            // Projects not applicable in issue views
+        case .addButton:
+            // Trigger add project
+            onAddProject?()
+        case .issue:
+            // Issues not applicable in project views
             break
         }
     }
@@ -138,11 +150,11 @@ struct GenericIssueBoardView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(alignment: .top, spacing: 16) {
                 ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
-                    GenericIssueColumn(
+                    GenericProjectColumn(
                         group: group,
                         showAddButton: showAddButton,
-                        onAddIssue: onAddIssue,
-                        isInspectorVisible: $isInspectorVisible,
+                        onAddProject: onAddProject,
+                        onSelectProject: onSelectProject,
                         focusedElement: $focusedElement
                     )
                 }
@@ -176,33 +188,32 @@ struct GenericIssueBoardView: View {
     }
 }
 
-// MARK: - Generic List View
+// MARK: - Generic Project List View
 
-struct GenericIssueListView: View {
-    let groups: [IssueGroup]
+struct GenericProjectListView: View {
+    let groups: [ProjectGroup]
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
-    @Binding var isInspectorVisible: Bool
+    let onAddProject: (() -> Void)?
+    let onSelectProject: (Project) -> Void
     @FocusState private var focusedElement: FocusableElement?
-    @Environment(ProjectStore.self) private var projectStore
 
-    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((Status?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
+    init(groups: [ProjectGroup], showAddButton: Bool = true, onAddProject: (() -> Void)? = nil, onSelectProject: @escaping (Project) -> Void) {
         self.groups = groups
         self.showAddButton = showAddButton
-        self.onAddIssue = onAddIssue
-        self._isInspectorVisible = isInspectorVisible
+        self.onAddProject = onAddProject
+        self.onSelectProject = onSelectProject
     }
 
     // Build flat list of all focusable elements in order
     private var focusableElements: [FocusableElement] {
         var elements: [FocusableElement] = []
         for group in groups.sorted(by: { $0.order < $1.order }) {
-            // Add all issues in this group
-            for issue in group.issues {
-                elements.append(.issue(issue.id))
+            // Add all projects in this group
+            for project in group.projects {
+                elements.append(.project(project.id))
             }
             // Add the add button for this group if applicable
-            if showAddButton && statusForGroup(group) != nil {
+            if showAddButton {
                 elements.append(.addButton(group.id))
             }
         }
@@ -237,23 +248,19 @@ struct GenericIssueListView: View {
         guard let focused = focusedElement else { return }
 
         switch focused {
-        case .issue(let issueId):
-            // Find and select the issue
+        case .project(let projectId):
+            // Find and select the project
             for group in groups {
-                if let issue = group.issues.first(where: { $0.id == issueId }) {
-                    projectStore.selectedIssue = issue
-                    isInspectorVisible = true
+                if let project = group.projects.first(where: { $0.id == projectId }) {
+                    onSelectProject(project)
                     return
                 }
             }
-        case .addButton(let groupId):
-            // Trigger add issue for this group
-            if let group = groups.first(where: { $0.id == groupId }),
-               let status = statusForGroup(group) {
-                onAddIssue?(status)
-            }
-        case .project:
-            // Projects not applicable in issue views
+        case .addButton:
+            // Trigger add project
+            onAddProject?()
+        case .issue:
+            // Issues not applicable in project views
             break
         }
     }
@@ -261,11 +268,11 @@ struct GenericIssueListView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 24) {
             ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
-                GenericIssueSection(
+                GenericProjectSection(
                     group: group,
                     showAddButton: showAddButton,
-                    onAddIssue: onAddIssue,
-                    isInspectorVisible: $isInspectorVisible,
+                    onAddProject: onAddProject,
+                    onSelectProject: onSelectProject,
                     focusedElement: $focusedElement
                 )
             }
@@ -290,17 +297,17 @@ struct GenericIssueListView: View {
     }
 }
 
-// MARK: - Generic Issue Column (for Board)
+// MARK: - Generic Project Column (for Board)
 
-struct GenericIssueColumn: View {
-    let group: IssueGroup
+struct GenericProjectColumn: View {
+    let group: ProjectGroup
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
-    @Binding var isInspectorVisible: Bool
+    let onAddProject: (() -> Void)?
+    let onSelectProject: (Project) -> Void
     @FocusState.Binding var focusedElement: FocusableElement?
 
     private var color: Color {
-        colorForGroup(group)
+        colorForProjectGroup(group)
     }
 
     private var isAddButtonFocused: Bool {
@@ -320,7 +327,7 @@ struct GenericIssueColumn: View {
 
                 Spacer()
 
-                Text("\(group.issues.count)")
+                Text("\(group.projects.count)")
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .padding(.horizontal, 6)
@@ -333,25 +340,25 @@ struct GenericIssueColumn: View {
             .background(color.opacity(0.1))
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
-            // Issue cards
+            // Project cards
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(group.issues) { issue in
-                        IssueCard(
-                            issue: issue,
-                            isInspectorVisible: $isInspectorVisible,
+                    ForEach(group.projects, id: \.id) { project in
+                        ProjectCard(
+                            project: project,
+                            onSelect: { onSelectProject(project) },
                             focusedElement: $focusedElement
                         )
                     }
 
-                    // Add issue button (only for status-based grouping)
-                    if showAddButton, let status = statusForGroup(group) {
-                        Button(action: { onAddIssue?(status) }) {
+                    // Add project button
+                    if showAddButton {
+                        Button(action: { onAddProject?() }) {
                             HStack {
                                 Image(systemName: "plus.circle")
                                     .foregroundStyle(.secondary)
 
-                                Text("Add Issue")
+                                Text("Add Project")
                                     .font(.subheadline)
                                     .foregroundStyle(.secondary)
                             }
@@ -372,8 +379,8 @@ struct GenericIssueColumn: View {
                         }
                     }
 
-                    if group.issues.isEmpty {
-                        Text("No issues")
+                    if group.projects.isEmpty {
+                        Text("No projects")
                             .font(.caption)
                             .foregroundStyle(.secondary)
                             .frame(maxWidth: .infinity)
@@ -386,17 +393,17 @@ struct GenericIssueColumn: View {
     }
 }
 
-// MARK: - Generic Issue Section (for List)
+// MARK: - Generic Project Section (for List)
 
-struct GenericIssueSection: View {
-    let group: IssueGroup
+struct GenericProjectSection: View {
+    let group: ProjectGroup
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
-    @Binding var isInspectorVisible: Bool
+    let onAddProject: (() -> Void)?
+    let onSelectProject: (Project) -> Void
     @FocusState.Binding var focusedElement: FocusableElement?
 
     private var color: Color {
-        colorForGroup(group)
+        colorForProjectGroup(group)
     }
 
     private var isAddButtonFocused: Bool {
@@ -419,7 +426,7 @@ struct GenericIssueSection: View {
                         .font(.headline)
                         .foregroundStyle(.primary)
 
-                    Text("\(group.issues.count)")
+                    Text("\(group.projects.count)")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .padding(.horizontal, 6)
@@ -430,9 +437,9 @@ struct GenericIssueSection: View {
 
                 Spacer()
 
-                // Add button (only for status-based grouping)
-                if showAddButton, let status = statusForGroup(group) {
-                    Button(action: { onAddIssue?(status) }) {
+                // Add project button
+                if showAddButton {
+                    Button(action: { onAddProject?() }) {
                         Image(systemName: "plus.circle.fill")
                             .foregroundStyle(color)
                     }
@@ -452,57 +459,26 @@ struct GenericIssueSection: View {
                 }
             }
 
-            // Issue cards
+            // Project cards
             VStack(spacing: 8) {
-                ForEach(group.issues) { issue in
-                    IssueCard(
-                        issue: issue,
-                        isInspectorVisible: $isInspectorVisible,
+                ForEach(group.projects, id: \.id) { project in
+                    ProjectCard(
+                        project: project,
+                        onSelect: { onSelectProject(project) },
                         focusedElement: $focusedElement
                     )
                 }
 
-                if group.issues.isEmpty {
-                    Text("No issues")
+                if group.projects.isEmpty {
+                    Text("No projects")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 24)
-                        .background(.bar.opacity(0.5))
+                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                 }
             }
         }
-    }
-}
-
-// MARK: - Helper Functions
-
-private func colorForGroup(_ group: IssueGroup) -> Color {
-    // Try to match status-based colors
-    switch group.id {
-    case "todo": return .gray
-    case "inProgress": return .orange
-    case "review": return .purple
-    case "done": return .green
-    case "urgent": return .red
-    case "high": return .orange
-    case "medium": return .blue
-    case "low": return .gray
-    case "overdue": return .red
-    case "today": return .orange
-    case "tomorrow": return .blue
-    default: return .blue
-    }
-}
-
-private func statusForGroup(_ group: IssueGroup) -> Status? {
-    // Only return status if this is a status-based group
-    switch group.id {
-    case "todo": return .todo
-    case "inProgress": return .inProgress
-    case "review": return .review
-    case "done": return .done
-    default: return nil
     }
 }

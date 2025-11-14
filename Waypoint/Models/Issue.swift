@@ -8,7 +8,7 @@
 import Foundation
 import SwiftData
 
-enum IssueStatus: String, Codable {
+enum Status: String, Codable {
     case todo
     case inProgress
     case review
@@ -27,7 +27,7 @@ final class Issue {
     var id: UUID
     var title: String
     var issueDescription: String?
-    var status: IssueStatus
+    var status: Status
     var priority: IssuePriority
     var createdAt: Date
     var updatedAt: Date
@@ -36,7 +36,7 @@ final class Issue {
     var project: Project?
     var tags: [Tag] = []
 
-    init(title: String, status: IssueStatus = .todo, priority: IssuePriority = .medium, project: Project? = nil) {
+    init(title: String, status: Status = .todo, priority: IssuePriority = .medium, project: Project? = nil) {
         self.id = UUID()
         self.title = title
         self.status = status

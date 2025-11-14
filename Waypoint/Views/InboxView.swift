@@ -10,7 +10,7 @@ struct InboxView: View {
     @Environment(ViewSettingsStore.self) private var viewSettingsStore
     @Query private var allIssues: [Issue]
     @State private var showingCreateIssue = false
-    @State private var createIssueWithStatus: IssueStatus?
+    @State private var createIssueWithStatus: Status?
     @Binding var isInspectorVisible: Bool
 
     private var settings: ViewSettings {

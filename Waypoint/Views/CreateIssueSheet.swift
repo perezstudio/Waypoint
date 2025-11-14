@@ -14,12 +14,12 @@ struct CreateIssueSheet: View {
 	@Query private var projects: [Project]
 	@Query private var tags: [Tag]
 
-	let defaultStatus: IssueStatus
+	let defaultStatus: Status
 	let project: Project?
 
 	@State private var title: String = ""
 	@State private var description: String = ""
-	@State private var status: IssueStatus
+	@State private var status: Status
 	@State private var priority: IssuePriority = .medium
 	@State private var dueDate: Date = Date()
 	@State private var hasDueDate: Bool = false
@@ -40,7 +40,7 @@ struct CreateIssueSheet: View {
 		case description
 	}
 
-	init(defaultStatus: IssueStatus = .todo, project: Project? = nil) {
+	init(defaultStatus: Status = .todo, project: Project? = nil) {
 		self.defaultStatus = defaultStatus
 		self.project = project
 		_status = State(initialValue: defaultStatus)
@@ -215,7 +215,7 @@ struct CreateIssueSheet: View {
 	}
 
 	// Helper functions
-	private func statusColor(for status: IssueStatus) -> Color {
+	private func statusColor(for status: Status) -> Color {
 		switch status {
 		case .todo: return .gray
 		case .inProgress: return .orange
@@ -224,7 +224,7 @@ struct CreateIssueSheet: View {
 		}
 	}
 
-	private func statusLabel(for status: IssueStatus) -> String {
+	private func statusLabel(for status: Status) -> String {
 		switch status {
 		case .todo: return "To Do"
 		case .inProgress: return "In Progress"
@@ -342,13 +342,13 @@ struct KeyboardShortcutHandler: View {
 // MARK: - Status Picker Popover
 
 struct StatusPickerPopover: View {
-	@Binding var selectedStatus: IssueStatus
+	@Binding var selectedStatus: Status
 	let onDismiss: () -> Void
 
 	@State private var selectedIndex: Int = 0
 	@FocusState private var isFocused: Bool
 
-	private let statuses: [IssueStatus] = [.todo, .inProgress, .review, .done]
+	private let statuses: [Status] = [.todo, .inProgress, .review, .done]
 
 	var body: some View {
 		VStack(spacing: 4) {
@@ -423,7 +423,7 @@ struct StatusPickerPopover: View {
 		}
 	}
 
-	private func statusColor(for status: IssueStatus) -> Color {
+	private func statusColor(for status: Status) -> Color {
 		switch status {
 		case .todo: return .gray
 		case .inProgress: return .orange
@@ -432,7 +432,7 @@ struct StatusPickerPopover: View {
 		}
 	}
 
-	private func statusLabel(for status: IssueStatus) -> String {
+	private func statusLabel(for status: Status) -> String {
 		switch status {
 		case .todo: return "To Do"
 		case .inProgress: return "In Progress"

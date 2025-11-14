@@ -61,8 +61,8 @@ struct DetailView: View {
 	private var shouldShowViewSettingsToolbar: Bool {
 		switch projectStore.selectedView {
 		case .system(let systemView):
-			// Show for inbox, today, upcoming, completed
-			return systemView != .projects
+			// Show for inbox, today, upcoming, completed, and projects
+			return true
 		case .project:
 			// Show for project issues view
 			return projectStore.selectedViewType == .issues
@@ -102,6 +102,21 @@ struct DetailView: View {
 		}
 	}
 
+	private var currentProjectViewSettings: Binding<ProjectViewSettings>? {
+		switch projectStore.selectedView {
+		case .system(let systemView):
+			if systemView == .projects {
+				return Binding(
+					get: { viewSettingsStore.projectsSettings },
+					set: { viewSettingsStore.projectsSettings = $0 }
+				)
+			}
+			return nil
+		case .project:
+			return nil
+		}
+	}
+
 	private var currentSystemView: SystemView? {
 		if case .system(let systemView) = projectStore.selectedView {
 			return systemView
@@ -121,7 +136,7 @@ struct DetailView: View {
 		VStack(spacing: 0) {
 			// Header toolbar
 			HStack(alignment: .center) {
-				// Left: Sidebar Toggle (when collapsed) + Icon + View Name
+				// Left: Sidebar Toggle (when collapsed) + Back Button (if from projects list) + Icon + View Name
 				HStack(spacing: 12) {
 					// Sidebar toggle button - only show when sidebar is collapsed
 					if isSidebarCollapsed {
@@ -137,6 +152,23 @@ struct DetailView: View {
 						.transition(.move(edge: .leading).combined(with: .opacity))
 					}
 
+					// Back button - show when viewing project that came from projects list
+					if case .project = projectStore.selectedView, projectStore.cameFromProjectsList {
+						SidebarIconButton(
+							icon: "chevron.left",
+							action: {
+								withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+									projectStore.selectSystemView(.projects)
+								}
+							},
+							tooltip: "Back to Projects"
+						)
+						.transition(.asymmetric(
+							insertion: .move(edge: .leading).combined(with: .opacity),
+							removal: .move(edge: .leading).combined(with: .opacity)
+						))
+					}
+
 					Image(systemName: viewIcon)
 						.font(.title2)
 						.foregroundStyle(viewColor)
@@ -146,11 +178,129 @@ struct DetailView: View {
 						.fontWeight(.semibold)
 				}
 				.animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSidebarCollapsed)
+				.animation(.spring(response: 0.3, dampingFraction: 0.8), value: projectStore.cameFromProjectsList)
 
 				Spacer()
 
 				// Middle: View Settings Controls (when applicable)
-				if shouldShowViewSettingsToolbar, let settings = currentViewSettings {
+				if shouldShowViewSettingsToolbar, let projectSettings = currentProjectViewSettings {
+					HStack(alignment: .center, spacing: 24) {
+						// View mode picker
+						VStack(alignment: .center, spacing: 4) {
+							if viewSettingsStore.controlDisplayMode == .textOnly {
+								Picker("", selection: Binding(
+									get: { projectSettings.wrappedValue.viewMode },
+									set: {
+										var newSettings = projectSettings.wrappedValue
+										newSettings.viewMode = $0
+										projectSettings.wrappedValue = newSettings
+									}
+								)) {
+									ForEach(IssuesViewMode.allCases, id: \.self) { mode in
+										Text(mode.rawValue).tag(mode)
+									}
+								}
+								.labelsHidden()
+								.pickerStyle(.segmented)
+								.help("View mode")
+							} else {
+								Picker("", selection: Binding(
+									get: { projectSettings.wrappedValue.viewMode },
+									set: {
+										var newSettings = projectSettings.wrappedValue
+										newSettings.viewMode = $0
+										projectSettings.wrappedValue = newSettings
+									}
+								)) {
+									ForEach(IssuesViewMode.allCases, id: \.self) { mode in
+										Image(systemName: mode == .board ? "square.grid.2x2" : "list.bullet")
+											.tag(mode)
+									}
+								}
+								.labelsHidden()
+								.pickerStyle(.segmented)
+								.help("View mode")
+							}
+
+							if viewSettingsStore.controlDisplayMode != .iconOnly {
+								Text("View")
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+						}
+
+						// Group by menu (for projects)
+						ViewControlMenu(
+							icon: projectSettings.wrappedValue.groupBy.icon,
+							text: "Group",
+							selectedText: projectSettings.wrappedValue.groupBy.rawValue
+						) {
+							ForEach(ProjectGrouping.allCases, id: \.self) { grouping in
+								Button(action: {
+									var newSettings = projectSettings.wrappedValue
+									newSettings.groupBy = grouping
+									projectSettings.wrappedValue = newSettings
+								}) {
+									HStack {
+										Image(systemName: grouping.icon)
+										Text(grouping.rawValue)
+										if projectSettings.wrappedValue.groupBy == grouping {
+											Spacer()
+											Image(systemName: "checkmark")
+										}
+									}
+								}
+							}
+						}
+
+						// Sort controls (for projects)
+						VStack(alignment: .center, spacing: 4) {
+							HStack(spacing: 6) {
+								// Sort by menu
+								ViewControlMenu(
+									icon: projectSettings.wrappedValue.sortBy.icon,
+									text: "Sort",
+									selectedText: projectSettings.wrappedValue.sortBy.rawValue,
+									showLabel: false
+								) {
+									ForEach(ProjectSorting.allCases, id: \.self) { sorting in
+										Button(action: {
+											var newSettings = projectSettings.wrappedValue
+											newSettings.sortBy = sorting
+											projectSettings.wrappedValue = newSettings
+										}) {
+											HStack {
+												Image(systemName: sorting.icon)
+												Text(sorting.rawValue)
+												if projectSettings.wrappedValue.sortBy == sorting {
+													Spacer()
+													Image(systemName: "checkmark")
+												}
+											}
+										}
+									}
+								}
+
+								// Sort direction button
+								ViewControlButton(
+									icon: projectSettings.wrappedValue.sortDirection.icon,
+									text: projectSettings.wrappedValue.sortDirection.rawValue,
+									showLabel: false
+								) {
+									var newSettings = projectSettings.wrappedValue
+									newSettings.sortDirection = newSettings.sortDirection == .ascending ? .descending : .ascending
+									projectSettings.wrappedValue = newSettings
+								}
+							}
+
+							if viewSettingsStore.controlDisplayMode != .iconOnly {
+								Text("Sort")
+									.font(.caption)
+									.foregroundStyle(.secondary)
+							}
+						}
+					}
+				} else if shouldShowViewSettingsToolbar, let settings = currentViewSettings {
 					HStack(alignment: .center, spacing: 24) {
 						// View mode picker
 						VStack(alignment: .center, spacing: 4) {
@@ -354,8 +504,7 @@ struct DetailView: View {
 			Text("Completed Tasks")
 				.foregroundStyle(.secondary)
 		case .projects:
-			Text("All Projects")
-				.foregroundStyle(.secondary)
+			ProjectsListView()
 		}
 	}
 
@@ -382,7 +531,7 @@ struct ProjectOverviewView: View {
 		return allIssues.filter { $0.project?.id == project.id }
 	}
 
-	private var issuesByStatus: [IssueStatus: Int] {
+	private var issuesByStatus: [Status: Int] {
 		Dictionary(grouping: projectIssues, by: { $0.status })
 			.mapValues { $0.count }
 	}
@@ -532,7 +681,7 @@ struct ProjectIssuesView: View {
 	@Environment(ProjectStore.self) private var projectStore
 	@Query private var allIssues: [Issue]
 	@State private var showingCreateIssue = false
-	@State private var createIssueForStatus: IssueStatus?
+	@State private var createIssueForStatus: Status?
 	@Binding var isInspectorVisible: Bool
 
 	private var projectIssues: [Issue] {
@@ -540,7 +689,7 @@ struct ProjectIssuesView: View {
 		return allIssues.filter { $0.project?.id == project.id }
 	}
 
-	private var issuesByStatus: [IssueStatus: [Issue]] {
+	private var issuesByStatus: [Status: [Issue]] {
 		Dictionary(grouping: projectIssues, by: { $0.status })
 	}
 
@@ -578,8 +727,8 @@ struct ProjectIssuesView: View {
 
 // Board View
 struct IssueBoardView: View {
-	let issuesByStatus: [IssueStatus: [Issue]]
-	let onAddIssue: (IssueStatus) -> Void
+	let issuesByStatus: [Status: [Issue]]
+	let onAddIssue: (Status) -> Void
 	@Binding var isInspectorVisible: Bool
 	@FocusState private var focusedElement: FocusableElement?
 
@@ -627,12 +776,12 @@ struct IssueBoardView: View {
 
 // List View
 struct IssueListView: View {
-	let issuesByStatus: [IssueStatus: [Issue]]
-	let onAddIssue: (IssueStatus) -> Void
+	let issuesByStatus: [Status: [Issue]]
+	let onAddIssue: (Status) -> Void
 	@Binding var isInspectorVisible: Bool
 	@FocusState private var focusedElement: FocusableElement?
 
-	private let statuses: [(status: IssueStatus, title: String, color: Color)] = [
+	private let statuses: [(status: Status, title: String, color: Color)] = [
 		(.todo, "To Do", .gray),
 		(.inProgress, "In Progress", .orange),
 		(.review, "Review", .purple),
@@ -660,10 +809,10 @@ struct IssueListView: View {
 
 struct IssueSection: View {
 	let title: String
-	let status: IssueStatus
+	let status: Status
 	let issues: [Issue]
 	let color: Color
-	let onAddIssue: (IssueStatus) -> Void
+	let onAddIssue: (Status) -> Void
 	@Binding var isInspectorVisible: Bool
 	@FocusState.Binding var focusedElement: FocusableElement?
 
@@ -720,10 +869,10 @@ struct IssueSection: View {
 
 struct IssueColumn: View {
 	let title: String
-	let status: IssueStatus
+	let status: Status
 	let issues: [Issue]
 	let color: Color
-	let onAddIssue: (IssueStatus) -> Void
+	let onAddIssue: (Status) -> Void
 	@Binding var isInspectorVisible: Bool
 	@FocusState.Binding var focusedElement: FocusableElement?
 
