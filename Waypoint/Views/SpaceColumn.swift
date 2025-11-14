@@ -187,11 +187,12 @@ struct SpaceColumn: View {
 						)
 
 						MenuItemView(
-							icon: "list.bullet",
+							icon: "list.bullet.rectangle",
 							label: "All Issues",
 							count: spaceProjects.reduce(0) { $0 + $1.issues.count },
-							isSelected: false,
-							action: { /* TODO: Add All Issues view */ }
+							isSelected: projectStore.selectedView == .system(.allIssues),
+							iconColor: SystemView.allIssues.color,
+							action: { projectStore.selectSystemView(.allIssues) }
 						)
 					}
 				}

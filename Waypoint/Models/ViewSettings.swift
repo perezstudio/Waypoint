@@ -158,6 +158,10 @@ class ViewSettingsStore {
         didSet { saveSettings(completedSettings, forKey: "viewSettings.completed") }
     }
 
+    var allIssuesSettings: ViewSettings {
+        didSet { saveSettings(allIssuesSettings, forKey: "viewSettings.allIssues") }
+    }
+
     var projectsSettings: ProjectViewSettings {
         didSet { saveProjectSettings(projectsSettings, forKey: "viewSettings.projects") }
     }
@@ -175,12 +179,14 @@ class ViewSettingsStore {
         self.todaySettings = Self.loadSettings(forKey: "viewSettings.today")
         self.upcomingSettings = Self.loadSettings(forKey: "viewSettings.upcoming")
         self.completedSettings = Self.loadSettings(forKey: "viewSettings.completed")
+        self.allIssuesSettings = Self.loadSettings(forKey: "viewSettings.allIssues")
         self.projectsSettings = Self.loadProjectSettings(forKey: "viewSettings.projects")
     }
 
     func getSettings(for systemView: SystemView) -> ViewSettings {
         switch systemView {
         case .inbox: return inboxSettings
+        case .allIssues: return allIssuesSettings
         case .today: return todaySettings
         case .upcoming: return upcomingSettings
         case .completed: return completedSettings
@@ -191,6 +197,7 @@ class ViewSettingsStore {
     func updateSettings(_ settings: ViewSettings, for systemView: SystemView) {
         switch systemView {
         case .inbox: inboxSettings = settings
+        case .allIssues: allIssuesSettings = settings
         case .today: todaySettings = settings
         case .upcoming: upcomingSettings = settings
         case .completed: completedSettings = settings

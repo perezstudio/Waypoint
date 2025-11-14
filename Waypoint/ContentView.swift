@@ -73,6 +73,11 @@ struct ContentView: View {
 					.keyboardShortcut("i", modifiers: .command)
 					.hidden()
 
+				// Navigation shortcuts - All Issues
+				Button("") { projectStore.selectSystemView(.allIssues) }
+					.keyboardShortcut("a", modifiers: .command)
+					.hidden()
+
 				// Navigation shortcuts - Today
 				Button("") { projectStore.selectSystemView(.today) }
 					.keyboardShortcut("t", modifiers: .command)

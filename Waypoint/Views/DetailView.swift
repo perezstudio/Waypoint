@@ -29,6 +29,7 @@ struct DetailView: View {
 		case .system(let systemView):
 			switch systemView {
 			case .inbox: return "Inbox"
+			case .allIssues: return "All Issues"
 			case .today: return "Today"
 			case .upcoming: return "Upcoming"
 			case .completed: return "Completed"
@@ -77,6 +78,11 @@ struct DetailView: View {
 				return Binding(
 					get: { viewSettingsStore.inboxSettings },
 					set: { viewSettingsStore.updateSettings($0, for: .inbox) }
+				)
+			case .allIssues:
+				return Binding(
+					get: { viewSettingsStore.allIssuesSettings },
+					set: { viewSettingsStore.updateSettings($0, for: .allIssues) }
 				)
 			case .today:
 				return Binding(
@@ -495,6 +501,8 @@ struct DetailView: View {
 		switch systemView {
 		case .inbox:
 			InboxView(isInspectorVisible: $isInspectorVisible)
+		case .allIssues:
+			AllIssuesView(isInspectorVisible: $isInspectorVisible)
 		case .today:
 			TodayView(isInspectorVisible: $isInspectorVisible)
 		case .upcoming:

@@ -10,6 +10,7 @@ import SwiftUI
 
 enum SystemView: Hashable {
     case inbox
+    case allIssues
     case today
     case upcoming
     case completed
@@ -18,6 +19,7 @@ enum SystemView: Hashable {
     var color: Color {
         switch self {
         case .inbox: return .blue
+        case .allIssues: return .cyan
         case .today: return .yellow
         case .upcoming: return .red
         case .completed: return .green
@@ -28,6 +30,7 @@ enum SystemView: Hashable {
     var icon: String {
         switch self {
         case .inbox: return "tray.fill"
+        case .allIssues: return "list.bullet.rectangle"
         case .today:
             let day = Calendar.current.component(.day, from: Date())
             return "\(day).calendar"
