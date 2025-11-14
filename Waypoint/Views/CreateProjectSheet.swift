@@ -18,7 +18,7 @@ struct CreateProjectSheet: View {
 	@State private var name: String = ""
 	@State private var description: String = ""
 	@State private var selectedIcon: String = "folder.fill"
-	@State private var selectedColor: String = "#007AFF"
+	@State private var selectedColor: AppColor = .blue
 	@State private var selectedSpace: Space?
 	@State private var highlightedIconIndex: Int = 0
 	@State private var highlightedColorIndex: Int = 0
@@ -44,16 +44,12 @@ struct CreateProjectSheet: View {
 		"bolt.fill", "lightbulb.fill", "gear", "hammer.fill",
 		"wrench.fill", "paintbrush.fill", "photo.fill", "video.fill",
 		"music.note", "book.fill", "graduationcap.fill", "briefcase.fill",
-		"cart.fill", "creditcard.fill", "chart.bar.fill", "graph.fill",
+		"cart.fill", "creditcard.fill", "chart.bar.fill", "chart.xyaxis.line",
 		"safari.fill", "iphone", "laptopcomputer", "desktopcomputer"
 	]
 
-	// Preset colors
-	private let presetColors = [
-		"#007AFF", "#FF9500", "#FF2D55", "#AF52DE",
-		"#5856D6", "#32ADE6", "#00C7BE", "#34C759",
-		"#FF3B30", "#FF9500", "#FFCC00", "#8E8E93"
-	]
+	// Use AppColor enum for consistent colors
+	private let presetColors = AppColor.allCases
 
 	var body: some View {
 		NavigationStack {
@@ -270,13 +266,13 @@ struct CreateProjectSheet: View {
 	private var colorGridSection: some View {
 		Section("Color") {
 			LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
-				ForEach(Array(presetColors.enumerated()), id: \.offset) { index, colorHex in
-					Button(action: { selectedColor = colorHex }) {
+				ForEach(Array(presetColors.enumerated()), id: \.offset) { index, appColor in
+					Button(action: { selectedColor = appColor }) {
 						ZStack {
 							RoundedRectangle(cornerRadius: 8)
-								.fill(Color(hex: colorHex) ?? .blue)
+								.fill(appColor.color)
 
-							if selectedColor == colorHex {
+							if selectedColor == appColor {
 								RoundedRectangle(cornerRadius: 8)
 									.strokeBorder(Color.primary, lineWidth: 3)
 							}
@@ -360,12 +356,12 @@ struct CreateProjectSheet: View {
 		let newProject = Project(
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
 			icon: selectedIcon,
-			color: selectedColor,
+			color: selectedColor.hexString,
 			space: selectedSpace
 		)
 
 		if !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-			// Note: Project model doesn't have description field yet, this is future-proofing
+			newProject.projectDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
 		}
 
 		modelContext.insert(newProject)

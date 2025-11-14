@@ -17,7 +17,7 @@ struct CreateTagSheet: View {
 
 	@State private var name: String = ""
 	@State private var selectedIcon: String? = nil
-	@State private var selectedColor: String = "#007AFF"
+	@State private var selectedColor: AppColor = .blue
 	@State private var selectedSpace: Space?
 	@FocusState private var focusedField: Field?
 
@@ -39,12 +39,8 @@ struct CreateTagSheet: View {
 		"heart", "heart.fill", "exclamationmark", "exclamationmark.circle.fill"
 	]
 
-	// Preset colors
-	private let presetColors = [
-		"#FF3B30", "#FF9500", "#FFCC00", "#34C759",
-		"#00C7BE", "#32ADE6", "#007AFF", "#5856D6",
-		"#AF52DE", "#FF2D55", "#A2845E", "#8E8E93"
-	]
+	// Use AppColor enum for consistent colors
+	private let presetColors = AppColor.allCases
 
 	var body: some View {
 		NavigationStack {
@@ -62,15 +58,15 @@ struct CreateTagSheet: View {
 					LazyVGrid(columns: [
 						GridItem(.adaptive(minimum: 44), spacing: 8)
 					], spacing: 8) {
-						ForEach(presetColors, id: \.self) { colorHex in
-							Button(action: { selectedColor = colorHex }) {
+						ForEach(presetColors, id: \.self) { appColor in
+							Button(action: { selectedColor = appColor }) {
 								RoundedRectangle(cornerRadius: 8)
-									.fill(Color(hex: colorHex) ?? .blue)
+									.fill(appColor.color)
 									.frame(width: 44, height: 44)
 									.overlay(
 										RoundedRectangle(cornerRadius: 8)
 											.strokeBorder(
-												selectedColor == colorHex ? Color.primary : Color.clear,
+												selectedColor == appColor ? Color.primary : Color.clear,
 												lineWidth: 3
 											)
 									)
@@ -134,7 +130,7 @@ struct CreateTagSheet: View {
 						if let icon = selectedIcon {
 							Image(systemName: icon)
 								.font(.caption)
-								.foregroundStyle(Color(hex: selectedColor) ?? .blue)
+								.foregroundStyle(selectedColor.color)
 						}
 
 						Text(name.isEmpty ? "Tag Name" : name)
@@ -145,7 +141,7 @@ struct CreateTagSheet: View {
 					}
 					.padding(.horizontal, 10)
 					.padding(.vertical, 6)
-					.background(Color(hex: selectedColor)?.opacity(0.15) ?? .blue.opacity(0.15))
+					.background(selectedColor.color.opacity(0.15))
 					.clipShape(RoundedRectangle(cornerRadius: 6))
 				}
 			}
@@ -177,7 +173,7 @@ struct CreateTagSheet: View {
 	private func createTag() {
 		let newTag = Tag(
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-			color: selectedColor,
+			color: selectedColor.hexString,
 			icon: selectedIcon,
 			space: selectedSpace
 		)

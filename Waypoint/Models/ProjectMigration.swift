@@ -77,7 +77,44 @@ enum SchemaV2: VersionedSchema {
     static var versionIdentifier = Schema.Version(2, 0, 0)
 
     static var models: [any PersistentModel.Type] {
-        [Project.self, Issue.self, Item.self, Tag.self, Space.self]
+        [ProjectV2.self, Issue.self, Item.self, Tag.self, Space.self]
+    }
+
+    @Model
+    final class ProjectV2 {
+        var id: UUID
+        var name: String
+        var icon: String
+        var color: String
+        var status: Status
+        var createdAt: Date
+        var updatedAt: Date
+
+        @Relationship(deleteRule: .cascade, inverse: \Issue.project)
+        var issues: [Issue] = []
+
+        var space: Space?
+
+        init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: Space? = nil) {
+            self.id = UUID()
+            self.name = name
+            self.icon = icon
+            self.color = color
+            self.status = status
+            self.createdAt = Date()
+            self.updatedAt = Date()
+            self.space = space
+        }
+    }
+}
+
+// MARK: - Schema V3 (After adding Resources, Updates, Milestones)
+
+enum SchemaV3: VersionedSchema {
+    static var versionIdentifier = Schema.Version(3, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self]
     }
 }
 
@@ -85,14 +122,17 @@ enum SchemaV2: VersionedSchema {
 
 enum WaypointMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [SchemaV1.self, SchemaV2.self]
+        [SchemaV1.self, SchemaV2.self, SchemaV3.self]
     }
 
-    static var stages: [MigrationStage] {
-        [migrateV1toV2]
-    }
+    static let migrateV1toV2 = MigrationStage.lightweight(
+        fromVersion: SchemaV1.self,
+        toVersion: SchemaV2.self
+    )
 
-    static let migrateV1toV2 = MigrationStage.custom(
+    /*
+    // Custom migration - commented out due to compilation issues
+    static let migrateV1toV2OLD = MigrationStage.custom(
         fromVersion: SchemaV1.self,
         toVersion: SchemaV2.self,
         willMigrate: { context in
@@ -152,9 +192,9 @@ enum WaypointMigrationPlan: SchemaMigrationPlan {
             let spaceMap = Dictionary(uniqueKeysWithValues: spaces.map { ($0.id, $0) })
 
             // Create new projects with status field
-            var projectMap: [UUID: Project] = [:]
+            var projectMap: [UUID: SchemaV2.ProjectV2] = [:]
             for data in projectData {
-                let newProject = Project(
+                let newProject = SchemaV2.ProjectV2(
                     name: data.name,
                     icon: data.icon,
                     color: data.color,
@@ -194,4 +234,14 @@ enum WaypointMigrationPlan: SchemaMigrationPlan {
         },
         didMigrate: nil
     )
+    */
+
+    static let migrateV2toV3 = MigrationStage.lightweight(
+        fromVersion: SchemaV2.self,
+        toVersion: SchemaV3.self
+    )
+
+    static var stages: [MigrationStage] {
+        [migrateV1toV2, migrateV2toV3]
+    }
 }

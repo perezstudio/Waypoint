@@ -15,11 +15,21 @@ final class Project {
     var icon: String  // SF Symbol name
     var color: String  // Hex color code
     var status: Status
+    var projectDescription: String?
     var createdAt: Date
     var updatedAt: Date
 
     @Relationship(deleteRule: .cascade, inverse: \Issue.project)
     var issues: [Issue] = []
+
+    @Relationship(deleteRule: .cascade, inverse: \Resource.project)
+    var resources: [Resource] = []
+
+    @Relationship(deleteRule: .cascade, inverse: \ProjectUpdate.project)
+    var updates: [ProjectUpdate] = []
+
+    @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
+    var milestones: [Milestone] = []
 
     var space: Space?
 

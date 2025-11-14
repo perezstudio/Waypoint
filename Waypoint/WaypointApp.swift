@@ -14,7 +14,7 @@ struct WaypointApp: App {
         do {
             // Use migration plan to handle schema changes
             return try ModelContainer(
-                for: Project.self, Issue.self, Item.self, Tag.self, Space.self,
+                for: Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self,
                 migrationPlan: WaypointMigrationPlan.self
             )
         } catch {

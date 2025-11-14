@@ -15,7 +15,7 @@ struct CreateSpaceSheet: View {
 	@State private var name: String = ""
 	@State private var description: String = ""
 	@State private var selectedIcon: String = "person.3.fill"
-	@State private var selectedColor: String = "#007AFF"
+	@State private var selectedColor: AppColor = .blue
 	@FocusState private var focusedField: Field?
 
 	enum Field: Hashable {
@@ -33,12 +33,8 @@ struct CreateSpaceSheet: View {
 		"shield.fill", "crown.fill", "medal.fill"
 	]
 
-	// Preset colors
-	private let presetColors = [
-		"#007AFF", "#FF9500", "#FF2D55", "#AF52DE",
-		"#5856D6", "#32ADE6", "#00C7BE", "#34C759",
-		"#FF3B30", "#FF9500", "#FFCC00", "#8E8E93"
-	]
+	// Use AppColor enum for consistent colors
+	private let presetColors = AppColor.allCases
 
 	var body: some View {
 		NavigationStack {
@@ -83,15 +79,15 @@ struct CreateSpaceSheet: View {
 					LazyVGrid(columns: [
 						GridItem(.adaptive(minimum: 44), spacing: 8)
 					], spacing: 8) {
-						ForEach(presetColors, id: \.self) { colorHex in
-							Button(action: { selectedColor = colorHex }) {
+						ForEach(presetColors, id: \.self) { appColor in
+							Button(action: { selectedColor = appColor }) {
 								RoundedRectangle(cornerRadius: 8)
-									.fill(Color(hex: colorHex) ?? .blue)
+									.fill(appColor.color)
 									.frame(width: 44, height: 44)
 									.overlay(
 										RoundedRectangle(cornerRadius: 8)
 											.strokeBorder(
-												selectedColor == colorHex ? Color.primary : Color.clear,
+												selectedColor == appColor ? Color.primary : Color.clear,
 												lineWidth: 3
 											)
 									)
@@ -131,7 +127,7 @@ struct CreateSpaceSheet: View {
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
 			spaceDescription: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
 			icon: selectedIcon,
-			color: selectedColor
+			color: selectedColor.hexString
 		)
 
 		modelContext.insert(newSpace)

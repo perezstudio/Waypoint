@@ -529,84 +529,280 @@ struct DetailView: View {
 	}
 }
 
-// Placeholder views for different project view types
+// Project Overview View
 struct ProjectOverviewView: View {
 	@Environment(ProjectStore.self) private var projectStore
-	@Query private var allIssues: [Issue]
+	@Environment(\.modelContext) private var modelContext
 
-	private var projectIssues: [Issue] {
-		guard let project = projectStore.selectedProject else { return [] }
-		return allIssues.filter { $0.project?.id == project.id }
+	@State private var showAddResource = false
+	@State private var showAddUpdate = false
+	@State private var showAddMilestone = false
+	@State private var projectDescription = ""
+	@State private var isEditingDescription = false
+
+	private var project: Project? {
+		projectStore.selectedProject
 	}
 
-	private var issuesByStatus: [Status: Int] {
-		Dictionary(grouping: projectIssues, by: { $0.status })
-			.mapValues { $0.count }
+	private var statusText: String {
+		guard let project = project else { return "" }
+		switch project.status {
+		case .todo: return "To Do"
+		case .inProgress: return "In Progress"
+		case .review: return "Review"
+		case .done: return "Done"
+		}
 	}
 
-	private var issuesByPriority: [IssuePriority: Int] {
-		Dictionary(grouping: projectIssues, by: { $0.priority })
-			.mapValues { $0.count }
+	private var statusColor: Color {
+		guard let project = project else { return .gray }
+		switch project.status {
+		case .todo: return .gray
+		case .inProgress: return .orange
+		case .review: return .purple
+		case .done: return .green
+		}
 	}
 
-	private var completionPercentage: Double {
-		guard !projectIssues.isEmpty else { return 0 }
-		let completed = issuesByStatus[.done] ?? 0
-		return Double(completed) / Double(projectIssues.count)
+	private var sortedResources: [Resource] {
+		project?.resources.sorted { $0.createdAt > $1.createdAt } ?? []
+	}
+
+	private var latestUpdate: ProjectUpdate? {
+		project?.updates.sorted { $0.createdAt > $1.createdAt }.first
+	}
+
+	private var sortedMilestones: [Milestone] {
+		project?.milestones.sorted { $0.order < $1.order } ?? []
 	}
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 24) {
-			// Stats Grid
-			LazyVGrid(columns: [
-				GridItem(.flexible()),
-				GridItem(.flexible()),
-				GridItem(.flexible()),
-				GridItem(.flexible())
-			], spacing: 16) {
-				StatCard(title: "Total Issues", value: "\(projectIssues.count)", icon: "list.bullet", color: .blue)
-				StatCard(title: "To Do", value: "\(issuesByStatus[.todo] ?? 0)", icon: "circle", color: .gray)
-				StatCard(title: "In Progress", value: "\(issuesByStatus[.inProgress] ?? 0)", icon: "arrow.right.circle.fill", color: .orange)
-				StatCard(title: "Completed", value: "\(issuesByStatus[.done] ?? 0)", icon: "checkmark.circle.fill", color: .green)
-			}
+		ScrollView {
+			VStack(alignment: .center, spacing: 32) {
+				// Project Header
+				projectHeader
 
-			// Progress Section
-			VStack(alignment: .leading, spacing: 12) {
-				HStack {
-					Text("Overall Progress")
-						.font(.headline)
-					Spacer()
-					Text("\(Int(completionPercentage * 100))%")
-						.font(.headline)
-						.foregroundStyle(.secondary)
+				// Main content container
+				VStack(alignment: .leading, spacing: 24) {
+					// Properties
+					propertiesSection
+
+					// Resources & Links
+					resourcesSection
+
+					// Latest Update
+					updatesSection
+
+					// Description Editor
+					descriptionSection
+
+					// Milestones
+					milestonesSection
 				}
-
-				ProgressView(value: completionPercentage)
-					.tint(.green)
+				.frame(maxWidth: 800)
 			}
-			.padding()
-			.background(.bar)
-			.clipShape(RoundedRectangle(cornerRadius: 8))
-
-			// Priority Breakdown
-			VStack(alignment: .leading, spacing: 12) {
-				Text("By Priority")
-					.font(.headline)
-
-				HStack(spacing: 16) {
-					PriorityBadge(priority: .urgent, count: issuesByPriority[.urgent] ?? 0)
-					PriorityBadge(priority: .high, count: issuesByPriority[.high] ?? 0)
-					PriorityBadge(priority: .medium, count: issuesByPriority[.medium] ?? 0)
-					PriorityBadge(priority: .low, count: issuesByPriority[.low] ?? 0)
-					Spacer()
-				}
-			}
-			.padding()
-			.background(.bar)
-			.clipShape(RoundedRectangle(cornerRadius: 8))
-
-			Spacer()
+			.frame(maxWidth: .infinity)
+			.padding(32)
 		}
+		.onAppear {
+			if let project = project {
+				projectDescription = project.projectDescription ?? ""
+			}
+		}
+		.sheet(isPresented: $showAddResource) {
+			if let project = project {
+				AddResourceSheet(project: project)
+			}
+		}
+		.sheet(isPresented: $showAddUpdate) {
+			if let project = project {
+				AddUpdateSheet(project: project)
+			}
+		}
+		.sheet(isPresented: $showAddMilestone) {
+			if let project = project {
+				AddMilestoneSheet(project: project)
+			}
+		}
+	}
+
+	private var projectHeader: some View {
+		VStack(spacing: 16) {
+			// Icon with colored background
+			if let project = project {
+				ZStack {
+					Circle()
+						.fill(AppColor.color(from: project.color).opacity(0.2))
+						.frame(width: 80, height: 80)
+					Image(systemName: project.icon)
+						.font(.system(size: 40))
+						.foregroundStyle(AppColor.color(from: project.color))
+				}
+
+				// Project name
+				Text(project.name)
+					.font(.largeTitle)
+					.fontWeight(.bold)
+			}
+		}
+	}
+
+	private var propertiesSection: some View {
+		VStack(alignment: .leading, spacing: 16) {
+			SectionHeader(title: "Properties")
+
+			LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 16) {
+				ProjectPropertyRow(label: "Status", value: statusText, color: statusColor)
+				ProjectPropertyRow(label: "Space", value: project?.space?.name ?? "No Space")
+				ProjectPropertyRow(label: "Created", value: project?.createdAt.formatted(date: .abbreviated, time: .omitted) ?? "")
+				ProjectPropertyRow(label: "Updated", value: project?.updatedAt.formatted(date: .abbreviated, time: .omitted) ?? "")
+				ProjectPropertyRow(label: "Issues", value: "\(project?.issues.count ?? 0)")
+			}
+		}
+		.padding(20)
+		.background(.bar)
+		.clipShape(RoundedRectangle(cornerRadius: 12))
+	}
+
+	private var resourcesSection: some View {
+		VStack(alignment: .leading, spacing: 12) {
+			SectionHeader(title: "Resources & Links", action: { showAddResource = true })
+
+			if sortedResources.isEmpty {
+				EmptyStateView(
+					icon: "link",
+					title: "No resources yet",
+					subtitle: "Add links and files to keep everything in one place"
+				)
+			} else {
+				VStack(spacing: 8) {
+					ForEach(sortedResources) { resource in
+						ResourceRow(resource: resource)
+					}
+				}
+			}
+		}
+		.padding(20)
+		.background(.bar)
+		.clipShape(RoundedRectangle(cornerRadius: 12))
+	}
+
+	private var updatesSection: some View {
+		VStack(alignment: .leading, spacing: 12) {
+			SectionHeader(title: "Latest Update", action: { showAddUpdate = true })
+
+			if let update = latestUpdate {
+				VStack(alignment: .leading, spacing: 8) {
+					HStack {
+						if let author = update.author, !author.isEmpty {
+							Text(author)
+								.font(.subheadline)
+								.fontWeight(.semibold)
+						}
+						Spacer()
+						Text(update.createdAt, style: .relative)
+							.font(.caption)
+							.foregroundStyle(.secondary)
+					}
+
+					Text(update.content)
+						.font(.body)
+						.lineLimit(5)
+
+					if let project = project, project.updates.count > 1 {
+						Button("View all updates (\(project.updates.count))") {
+							// Navigate to updates tab
+							projectStore.selectedViewType = .updates
+						}
+						.font(.caption)
+						.foregroundStyle(.blue)
+					}
+				}
+				.padding(16)
+				.background(Color(nsColor: .controlBackgroundColor))
+				.clipShape(RoundedRectangle(cornerRadius: 8))
+			} else {
+				EmptyStateView(
+					icon: "megaphone",
+					title: "No updates yet",
+					subtitle: "Share progress and keep your team informed",
+					buttonTitle: "Add First Update",
+					buttonAction: { showAddUpdate = true }
+				)
+			}
+		}
+		.padding(20)
+		.background(.bar)
+		.clipShape(RoundedRectangle(cornerRadius: 12))
+	}
+
+	private var descriptionSection: some View {
+		VStack(alignment: .leading, spacing: 12) {
+			SectionHeader(title: "Description")
+
+			TextEditor(text: $projectDescription)
+				.font(.body)
+				.frame(minHeight: 200)
+				.padding(8)
+				.background(Color(nsColor: .controlBackgroundColor))
+				.clipShape(RoundedRectangle(cornerRadius: 8))
+				.overlay(
+					RoundedRectangle(cornerRadius: 8)
+						.stroke(Color.gray.opacity(0.2), lineWidth: 1)
+				)
+				.onChange(of: projectDescription) { oldValue, newValue in
+					saveDescription(newValue)
+				}
+
+			if projectDescription.isEmpty {
+				Text("Add a description for this project...")
+					.font(.caption)
+					.foregroundStyle(.tertiary)
+					.padding(.top, -200)
+					.padding(.leading, 12)
+					.allowsHitTesting(false)
+			}
+		}
+		.padding(20)
+		.background(.bar)
+		.clipShape(RoundedRectangle(cornerRadius: 12))
+	}
+
+	private var milestonesSection: some View {
+		VStack(alignment: .leading, spacing: 12) {
+			SectionHeader(title: "Milestones", action: { showAddMilestone = true })
+
+			if sortedMilestones.isEmpty {
+				EmptyStateView(
+					icon: "flag",
+					title: "No milestones yet",
+					subtitle: "Break your project into key milestones"
+				)
+			} else {
+				VStack(spacing: 8) {
+					ForEach(sortedMilestones) { milestone in
+						MilestoneRow(milestone: milestone) { completed in
+							toggleMilestone(milestone, completed: completed)
+						}
+					}
+				}
+			}
+		}
+		.padding(20)
+		.background(.bar)
+		.clipShape(RoundedRectangle(cornerRadius: 12))
+	}
+
+	private func saveDescription(_ newValue: String) {
+		guard let project = project else { return }
+		project.projectDescription = newValue
+		try? modelContext.save()
+	}
+
+	private func toggleMilestone(_ milestone: Milestone, completed: Bool) {
+		milestone.isCompleted = completed
+		milestone.completedAt = completed ? Date() : nil
+		try? modelContext.save()
 	}
 }
 
