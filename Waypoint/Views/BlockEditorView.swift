@@ -10,14 +10,15 @@ import SwiftData
 
 struct BlockEditorView: View {
     @Bindable var block: ContentBlock
-    @FocusState.Binding var focusedBlockId: UUID?
+    @Binding var focusedBlockId: UUID?  // Changed from @FocusState.Binding to @Binding
     @Binding var focusAtEndBlockId: UUID?
+    let listNumber: Int?
     let onTypeChange: (BlockType) -> Void
     let onSlashCommand: () -> Void
     let onNewLine: () -> Void
     let onBackspaceEmpty: () -> Void
-
-    @State private var shouldMoveCursorToEnd = false
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
 
     var body: some View {
         contentEditor
@@ -34,41 +35,35 @@ struct BlockEditorView: View {
                     .foregroundStyle(.secondary)
             }
 
-            TextField("", text: $block.content, prompt: placeholderText, axis: .vertical)
-                .textFieldStyle(.plain)
-                .font(fontForBlockType)
-                .foregroundStyle(colorForBlockType)
-                .focused($focusedBlockId, equals: block.id)
-                .onSubmit {
-                    // Enter key creates new line
-                    onNewLine()
+            BlockTextView(
+                text: $block.content,
+                placeholder: placeholderString,
+                font: nsFontForBlockType,
+                textColor: nsColorForBlockType,
+                requestFocus: focusedBlockId == block.id,
+                moveCursorToEnd: focusAtEndBlockId == block.id,
+                onBecameFocused: {
+                    focusedBlockId = block.id
+                },
+                onMoveUp: onMoveUp,
+                onMoveDown: onMoveDown,
+                onSubmit: onNewLine,
+                onBackspaceEmpty: onBackspaceEmpty,
+                onTextChange: { newValue in
+                    handleContentChange(oldValue: block.content, newValue: newValue)
                 }
-                .onChange(of: block.content) { oldValue, newValue in
-                    handleContentChange(oldValue: oldValue, newValue: newValue)
-
-                    // If we added a cursor positioning character, remove it
-                    if shouldMoveCursorToEnd && newValue.hasSuffix("\u{200B}") {
-                        block.content = String(newValue.dropLast())
-                        shouldMoveCursorToEnd = false
-                    }
-                }
-                .onChange(of: focusAtEndBlockId) { oldValue, newValue in
-                    // Check if this block should move cursor to end
-                    if newValue == block.id {
-                        shouldMoveCursorToEnd = true
-                        // Append zero-width space to move cursor to end
-                        block.content += "\u{200B}"
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .onChange(of: focusAtEndBlockId) { oldValue, newValue in
+                // Reset the flag after it's been processed
+                if newValue == block.id {
+                    // The BlockTextView will handle moving cursor to end
+                    // Reset the state after a short delay
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
                         focusAtEndBlockId = nil
                     }
                 }
-                .onKeyPress { keyPress in
-                    // Check for backspace/delete key on empty block
-                    if (keyPress.characters == "\u{7F}" || keyPress.characters == "\u{08}") && block.content.isEmpty {
-                        onBackspaceEmpty()
-                        return .handled
-                    }
-                    return .ignored
-                }
+            }
         }
     }
 
@@ -77,8 +72,11 @@ struct BlockEditorView: View {
         case .bulletList:
             return "•"
         case .numberedList:
-            // Get the index of this block among numbered list blocks
-            return "\(block.order + 1)."
+            // Use the calculated list number
+            if let number = listNumber {
+                return "\(number)."
+            }
+            return "1."
         default:
             return nil
         }
@@ -90,6 +88,14 @@ struct BlockEditorView: View {
             return Text("Type / for commands...").foregroundStyle(.tertiary)
         }
         return nil
+    }
+
+    private var placeholderString: String {
+        // Only show placeholder when this block is focused
+        if focusedBlockId == block.id {
+            return "Type / for commands..."
+        }
+        return ""
     }
 
     private var fontForBlockType: Font {
@@ -115,6 +121,32 @@ struct BlockEditorView: View {
             return .secondary
         default:
             return .primary
+        }
+    }
+
+    private var nsFontForBlockType: NSFont {
+        switch block.type {
+        case .heading1:
+            return NSFont.systemFont(ofSize: 28, weight: .bold)
+        case .heading2:
+            return NSFont.systemFont(ofSize: 22, weight: .semibold)
+        case .heading3:
+            return NSFont.systemFont(ofSize: 18, weight: .semibold)
+        case .code:
+            return NSFont.monospacedSystemFont(ofSize: NSFont.systemFontSize, weight: .regular)
+        case .paragraph, .bulletList, .numberedList, .image:
+            return NSFont.systemFont(ofSize: NSFont.systemFontSize)
+        }
+    }
+
+    private var nsColorForBlockType: NSColor {
+        switch block.type {
+        case .heading1, .heading2, .heading3:
+            return .labelColor
+        case .code:
+            return .secondaryLabelColor
+        default:
+            return .labelColor
         }
     }
 

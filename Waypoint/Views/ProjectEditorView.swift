@@ -19,7 +19,7 @@ struct BlockPositionPreferenceKey: PreferenceKey {
 struct ProjectEditorView: View {
     @Bindable var project: Project
     @Environment(\.modelContext) private var modelContext
-    @FocusState private var focusedBlockId: UUID?
+    @State private var focusedBlockId: UUID?  // Changed from @FocusState to @State
     @State private var showBlockSelector = false
     @State private var blockSelectorSearchText = ""
     @State private var pendingBlockId: UUID?
@@ -72,6 +72,7 @@ struct ProjectEditorView: View {
                         block: block,
                         focusedBlockId: $focusedBlockId,
                         focusAtEndBlockId: $focusAtEndBlockId,
+                        listNumber: calculateListNumber(for: block),
                         onTypeChange: { newType in
                             handleTypeChange(for: block, newType: newType)
                         },
@@ -83,6 +84,12 @@ struct ProjectEditorView: View {
                         },
                         onBackspaceEmpty: {
                             handleBackspaceEmpty(on: block)
+                        },
+                        onMoveUp: {
+                            handleMoveUp(from: block)
+                        },
+                        onMoveDown: {
+                            handleMoveDown(from: block)
                         }
                     )
                     .id(block.id)
@@ -163,7 +170,15 @@ struct ProjectEditorView: View {
     }
 
     private func handleNewLine(after block: ContentBlock) {
-        // Create new paragraph block below current block
+        // Determine the type for the new block
+        // If current block is a list, continue with the same list type
+        let newBlockType: BlockType
+        if block.type == .bulletList || block.type == .numberedList {
+            newBlockType = block.type
+        } else {
+            newBlockType = .paragraph
+        }
+
         let newOrder = block.order + 1
 
         // Increment order of all blocks after this one
@@ -171,7 +186,7 @@ struct ProjectEditorView: View {
             nextBlock.order += 1
         }
 
-        let newBlock = ContentBlock(type: .paragraph, content: "", order: newOrder, project: project)
+        let newBlock = ContentBlock(type: newBlockType, content: "", order: newOrder, project: project)
         modelContext.insert(newBlock)
         try? modelContext.save()
 
@@ -225,5 +240,59 @@ struct ProjectEditorView: View {
             block.order = index
         }
         try? modelContext.save()
+    }
+
+    private func handleMoveUp(from block: ContentBlock) {
+        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
+              currentIndex > 0 else {
+            return
+        }
+
+        let previousBlock = sortedBlocks[currentIndex - 1]
+        // Focus previous block at the end
+        focusedBlockId = previousBlock.id
+        focusAtEndBlockId = previousBlock.id
+    }
+
+    private func handleMoveDown(from block: ContentBlock) {
+        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
+              currentIndex < sortedBlocks.count - 1 else {
+            return
+        }
+
+        let nextBlock = sortedBlocks[currentIndex + 1]
+        // Focus next block (cursor will be at beginning)
+        focusedBlockId = nextBlock.id
+    }
+
+    private func calculateListNumber(for block: ContentBlock) -> Int? {
+        // Only calculate for numbered lists
+        guard block.type == .numberedList else {
+            return nil
+        }
+
+        // Find the current block's index
+        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }) else {
+            return 1
+        }
+
+        // If it's the first block, return 1
+        if currentIndex == 0 {
+            return 1
+        }
+
+        // Check the previous block
+        let previousBlock = sortedBlocks[currentIndex - 1]
+
+        // If previous block is also a numbered list, increment its number
+        if previousBlock.type == .numberedList {
+            // Recursively calculate the previous block's number and add 1
+            if let previousNumber = calculateListNumber(for: previousBlock) {
+                return previousNumber + 1
+            }
+        }
+
+        // If previous block is not a numbered list, start at 1
+        return 1
     }
 }
