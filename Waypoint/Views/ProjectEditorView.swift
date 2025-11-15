@@ -92,6 +92,12 @@ struct ProjectEditorView: View {
                         },
                         onMoveDown: { cursorPosition in
                             handleMoveDown(from: block, cursorPosition: cursorPosition)
+                        },
+                        onMoveLeft: {
+                            handleMoveLeft(from: block)
+                        },
+                        onMoveRight: {
+                            handleMoveRight(from: block)
                         }
                     )
                     .id(block.id)
@@ -278,6 +284,34 @@ struct ProjectEditorView: View {
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             targetCursorPosition = nil
         }
+    }
+
+    private func handleMoveLeft(from block: ContentBlock) {
+        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
+              currentIndex > 0 else {
+            return
+        }
+
+        let previousBlock = sortedBlocks[currentIndex - 1]
+        // Move to end of previous block
+        focusedBlockId = previousBlock.id
+        focusAtEndBlockId = previousBlock.id
+
+        // Reset focusAtEndBlockId after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            focusAtEndBlockId = nil
+        }
+    }
+
+    private func handleMoveRight(from block: ContentBlock) {
+        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
+              currentIndex < sortedBlocks.count - 1 else {
+            return
+        }
+
+        let nextBlock = sortedBlocks[currentIndex + 1]
+        // Move to start of next block (don't set focusAtEndBlockId or targetCursorPosition)
+        focusedBlockId = nextBlock.id
     }
 
     private func calculateListNumber(for block: ContentBlock) -> Int? {

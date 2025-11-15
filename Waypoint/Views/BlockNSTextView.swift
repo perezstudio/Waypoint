@@ -11,6 +11,8 @@ class BlockNSTextView: NSTextView {
     // Callbacks for keyboard navigation
     var onMoveUp: ((Int) -> Void)?  // Now passes cursor position
     var onMoveDown: ((Int) -> Void)?  // Now passes cursor position
+    var onMoveLeft: (() -> Void)?  // Move to end of previous block
+    var onMoveRight: (() -> Void)?  // Move to start of next block
     var onSubmit: (() -> Void)?
     var onBackspaceEmpty: (() -> Void)?
     var onBecomeFirstResponder: (() -> Void)?
@@ -76,6 +78,28 @@ class BlockNSTextView: NSTextView {
             }
         }
 
+        // Handle Left arrow
+        if selector == #selector(NSResponder.moveLeft(_:)) || selector == #selector(NSResponder.moveBackward(_:)) {
+            let cursorPosition = selectedRange().location
+            print("◀️ Left arrow - cursor at: \(cursorPosition)")
+            if cursorPosition == 0 {
+                print("✅ At start - moving to end of previous block")
+                onMoveLeft?()
+                return
+            }
+        }
+
+        // Handle Right arrow
+        if selector == #selector(NSResponder.moveRight(_:)) || selector == #selector(NSResponder.moveForward(_:)) {
+            let cursorPosition = selectedRange().location
+            print("▶️ Right arrow - cursor at: \(cursorPosition), length: \(string.count)")
+            if cursorPosition == string.count {
+                print("✅ At end - moving to start of next block")
+                onMoveRight?()
+                return
+            }
+        }
+
         // Handle Up arrow
         if selector == #selector(NSResponder.moveUp(_:)) {
             print("🔼 Up arrow - isOnFirstLine: \(isOnFirstLine())")
@@ -134,7 +158,12 @@ class BlockNSTextView: NSTextView {
             return true
         }
 
-        let glyphIndex = layoutManager.glyphIndexForCharacter(at: selectedRange.location)
+        // If cursor is at the very end of the text, use the last character's position
+        let characterIndex = selectedRange.location == string.count && string.count > 0
+            ? string.count - 1
+            : selectedRange.location
+
+        let glyphIndex = layoutManager.glyphIndexForCharacter(at: characterIndex)
         var lineRange = NSRange()
         layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: &lineRange, withoutAdditionalLayout: true)
 
@@ -165,7 +194,12 @@ class BlockNSTextView: NSTextView {
             return true
         }
 
-        let glyphIndex = layoutManager.glyphIndexForCharacter(at: selectedRange.location)
+        // If cursor is at the very end of the text, use the last character's position
+        let characterIndex = selectedRange.location == string.count && string.count > 0
+            ? string.count - 1
+            : selectedRange.location
+
+        let glyphIndex = layoutManager.glyphIndexForCharacter(at: characterIndex)
         var lineRange = NSRange()
         layoutManager.lineFragmentRect(forGlyphAt: glyphIndex, effectiveRange: &lineRange, withoutAdditionalLayout: true)
 

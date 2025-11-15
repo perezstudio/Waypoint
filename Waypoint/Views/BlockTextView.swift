@@ -19,6 +19,8 @@ struct BlockTextView: NSViewRepresentable {
     var onBecameFocused: () -> Void
     var onMoveUp: (Int) -> Void  // Now passes cursor position
     var onMoveDown: (Int) -> Void  // Now passes cursor position
+    var onMoveLeft: () -> Void  // Move to end of previous block
+    var onMoveRight: () -> Void  // Move to start of next block
     var onSubmit: () -> Void
     var onBackspaceEmpty: () -> Void
     var onTextChange: (String) -> Void
@@ -54,6 +56,8 @@ struct BlockTextView: NSViewRepresentable {
         textView.onBecomeFirstResponder = onBecameFocused
         textView.onMoveUp = onMoveUp
         textView.onMoveDown = onMoveDown
+        textView.onMoveLeft = onMoveLeft
+        textView.onMoveRight = onMoveRight
         textView.onSubmit = onSubmit
         textView.onBackspaceEmpty = onBackspaceEmpty
 
@@ -81,6 +85,8 @@ struct BlockTextView: NSViewRepresentable {
         textView.onBecomeFirstResponder = onBecameFocused
         textView.onMoveUp = onMoveUp
         textView.onMoveDown = onMoveDown
+        textView.onMoveLeft = onMoveLeft
+        textView.onMoveRight = onMoveRight
         textView.onSubmit = onSubmit
         textView.onBackspaceEmpty = onBackspaceEmpty
 
@@ -197,6 +203,30 @@ struct BlockTextView: NSViewRepresentable {
                     return true
                 }
                 return false // Allow default backspace
+            }
+
+            // Handle Left arrow
+            if commandSelector == #selector(NSResponder.moveLeft(_:)) || commandSelector == #selector(NSResponder.moveBackward(_:)) {
+                let cursorPosition = textView.selectedRange().location
+                print("◀️ DELEGATE: Left arrow - cursor at: \(cursorPosition)")
+                if cursorPosition == 0 {
+                    print("✅ DELEGATE: At start - calling onMoveLeft")
+                    blockTextView.onMoveLeft?()
+                    return true
+                }
+                return false // Allow default left movement
+            }
+
+            // Handle Right arrow
+            if commandSelector == #selector(NSResponder.moveRight(_:)) || commandSelector == #selector(NSResponder.moveForward(_:)) {
+                let cursorPosition = textView.selectedRange().location
+                print("▶️ DELEGATE: Right arrow - cursor at: \(cursorPosition), length: \(textView.string.count)")
+                if cursorPosition == textView.string.count {
+                    print("✅ DELEGATE: At end - calling onMoveRight")
+                    blockTextView.onMoveRight?()
+                    return true
+                }
+                return false // Allow default right movement
             }
 
             // Handle Up arrow

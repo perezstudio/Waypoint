@@ -20,6 +20,8 @@ struct BlockEditorView: View {
     let onBackspaceEmpty: () -> Void
     let onMoveUp: (Int) -> Void  // Now passes cursor position
     let onMoveDown: (Int) -> Void  // Now passes cursor position
+    let onMoveLeft: () -> Void  // Move to end of previous block
+    let onMoveRight: () -> Void  // Move to start of next block
 
     var body: some View {
         contentEditor
@@ -49,6 +51,8 @@ struct BlockEditorView: View {
                 },
                 onMoveUp: onMoveUp,
                 onMoveDown: onMoveDown,
+                onMoveLeft: onMoveLeft,
+                onMoveRight: onMoveRight,
                 onSubmit: onNewLine,
                 onBackspaceEmpty: onBackspaceEmpty,
                 onTextChange: { newValue in
