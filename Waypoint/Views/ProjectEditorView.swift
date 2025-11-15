@@ -25,6 +25,7 @@ struct ProjectEditorView: View {
     @State private var pendingBlockId: UUID?
     @State private var blockSelectorPosition: CGRect = .zero
     @State private var focusAtEndBlockId: UUID?
+    @State private var targetCursorPosition: Int?  // For maintaining cursor column during navigation
 
     private var sortedBlocks: [ContentBlock] {
         project.contentBlocks.sorted { $0.order < $1.order }
@@ -72,6 +73,7 @@ struct ProjectEditorView: View {
                         block: block,
                         focusedBlockId: $focusedBlockId,
                         focusAtEndBlockId: $focusAtEndBlockId,
+                        targetCursorPosition: $targetCursorPosition,
                         listNumber: calculateListNumber(for: block),
                         onTypeChange: { newType in
                             handleTypeChange(for: block, newType: newType)
@@ -85,11 +87,11 @@ struct ProjectEditorView: View {
                         onBackspaceEmpty: {
                             handleBackspaceEmpty(on: block)
                         },
-                        onMoveUp: {
-                            handleMoveUp(from: block)
+                        onMoveUp: { cursorPosition in
+                            handleMoveUp(from: block, cursorPosition: cursorPosition)
                         },
-                        onMoveDown: {
-                            handleMoveDown(from: block)
+                        onMoveDown: { cursorPosition in
+                            handleMoveDown(from: block, cursorPosition: cursorPosition)
                         }
                     )
                     .id(block.id)
@@ -242,27 +244,40 @@ struct ProjectEditorView: View {
         try? modelContext.save()
     }
 
-    private func handleMoveUp(from block: ContentBlock) {
+    private func handleMoveUp(from block: ContentBlock, cursorPosition: Int) {
         guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
               currentIndex > 0 else {
             return
         }
 
         let previousBlock = sortedBlocks[currentIndex - 1]
-        // Focus previous block at the end
+        // Set target cursor position to maintain column
+        targetCursorPosition = cursorPosition
+        // Focus previous block
         focusedBlockId = previousBlock.id
-        focusAtEndBlockId = previousBlock.id
+
+        // Reset the target position after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            targetCursorPosition = nil
+        }
     }
 
-    private func handleMoveDown(from block: ContentBlock) {
+    private func handleMoveDown(from block: ContentBlock, cursorPosition: Int) {
         guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
               currentIndex < sortedBlocks.count - 1 else {
             return
         }
 
         let nextBlock = sortedBlocks[currentIndex + 1]
-        // Focus next block (cursor will be at beginning)
+        // Set target cursor position to maintain column
+        targetCursorPosition = cursorPosition
+        // Focus next block
         focusedBlockId = nextBlock.id
+
+        // Reset the target position after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            targetCursorPosition = nil
+        }
     }
 
     private func calculateListNumber(for block: ContentBlock) -> Int? {

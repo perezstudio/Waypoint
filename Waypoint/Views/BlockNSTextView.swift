@@ -9,8 +9,8 @@ import AppKit
 
 class BlockNSTextView: NSTextView {
     // Callbacks for keyboard navigation
-    var onMoveUp: (() -> Void)?
-    var onMoveDown: (() -> Void)?
+    var onMoveUp: ((Int) -> Void)?  // Now passes cursor position
+    var onMoveDown: ((Int) -> Void)?  // Now passes cursor position
     var onSubmit: (() -> Void)?
     var onBackspaceEmpty: (() -> Void)?
     var onBecomeFirstResponder: (() -> Void)?
@@ -81,7 +81,9 @@ class BlockNSTextView: NSTextView {
             print("🔼 Up arrow - isOnFirstLine: \(isOnFirstLine())")
             if isOnFirstLine() {
                 print("✅ Moving up to previous block")
-                onMoveUp?()
+                let cursorPosition = selectedRange().location
+                print("📍 Current cursor position: \(cursorPosition)")
+                onMoveUp?(cursorPosition)
                 return
             }
         }
@@ -91,7 +93,9 @@ class BlockNSTextView: NSTextView {
             print("🔽 Down arrow - isOnLastLine: \(isOnLastLine())")
             if isOnLastLine() {
                 print("✅ Moving down to next block")
-                onMoveDown?()
+                let cursorPosition = selectedRange().location
+                print("📍 Current cursor position: \(cursorPosition)")
+                onMoveDown?(cursorPosition)
                 return
             }
         }

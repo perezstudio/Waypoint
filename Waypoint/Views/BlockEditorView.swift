@@ -12,13 +12,14 @@ struct BlockEditorView: View {
     @Bindable var block: ContentBlock
     @Binding var focusedBlockId: UUID?  // Changed from @FocusState.Binding to @Binding
     @Binding var focusAtEndBlockId: UUID?
+    @Binding var targetCursorPosition: Int?
     let listNumber: Int?
     let onTypeChange: (BlockType) -> Void
     let onSlashCommand: () -> Void
     let onNewLine: () -> Void
     let onBackspaceEmpty: () -> Void
-    let onMoveUp: () -> Void
-    let onMoveDown: () -> Void
+    let onMoveUp: (Int) -> Void  // Now passes cursor position
+    let onMoveDown: (Int) -> Void  // Now passes cursor position
 
     var body: some View {
         contentEditor
@@ -42,6 +43,7 @@ struct BlockEditorView: View {
                 textColor: nsColorForBlockType,
                 requestFocus: focusedBlockId == block.id,
                 moveCursorToEnd: focusAtEndBlockId == block.id,
+                targetCursorPosition: targetCursorPosition,
                 onBecameFocused: {
                     focusedBlockId = block.id
                 },

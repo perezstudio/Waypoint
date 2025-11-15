@@ -15,9 +15,10 @@ struct BlockTextView: NSViewRepresentable {
     var textColor: NSColor
     var requestFocus: Bool  // Changed from isFocused
     var moveCursorToEnd: Bool
+    var targetCursorPosition: Int?  // For maintaining cursor column during navigation
     var onBecameFocused: () -> Void
-    var onMoveUp: () -> Void
-    var onMoveDown: () -> Void
+    var onMoveUp: (Int) -> Void  // Now passes cursor position
+    var onMoveDown: (Int) -> Void  // Now passes cursor position
     var onSubmit: () -> Void
     var onBackspaceEmpty: () -> Void
     var onTextChange: (String) -> Void
@@ -99,15 +100,20 @@ struct BlockTextView: NSViewRepresentable {
                     print("🎯 makeFirstResponder result: \(didBecome)")
 
                     if didBecome {
-                        // Move cursor to appropriate position
-                        if moveCursorToEnd {
-                            let endLocation = textView.string.count
-                            textView.setSelectedRange(NSRange(location: endLocation, length: 0))
-                            print("📍 Cursor moved to end (location: \(endLocation))")
+                        // Determine cursor position
+                        let cursorLocation: Int
+                        if let targetPosition = targetCursorPosition {
+                            // Use target position (column from previous block), capped at text length
+                            cursorLocation = min(targetPosition, textView.string.count)
+                            print("📍 Cursor moved to target position (location: \(cursorLocation), target: \(targetPosition))")
+                        } else if moveCursorToEnd {
+                            cursorLocation = textView.string.count
+                            print("📍 Cursor moved to end (location: \(cursorLocation))")
                         } else {
-                            textView.setSelectedRange(NSRange(location: 0, length: 0))
+                            cursorLocation = 0
                             print("📍 Cursor moved to beginning")
                         }
+                        textView.setSelectedRange(NSRange(location: cursorLocation, length: 0))
                     }
                 } else {
                     print("❌ Text view has no window, trying async...")
@@ -117,24 +123,32 @@ struct BlockTextView: NSViewRepresentable {
                             let didBecome = window.makeFirstResponder(textView)
                             print("🎯 makeFirstResponder result (async): \(didBecome)")
                             if didBecome {
-                                if moveCursorToEnd {
-                                    textView.setSelectedRange(NSRange(location: textView.string.count, length: 0))
+                                let cursorLocation: Int
+                                if let targetPosition = targetCursorPosition {
+                                    cursorLocation = min(targetPosition, textView.string.count)
+                                } else if moveCursorToEnd {
+                                    cursorLocation = textView.string.count
                                 } else {
-                                    textView.setSelectedRange(NSRange(location: 0, length: 0))
+                                    cursorLocation = 0
                                 }
+                                textView.setSelectedRange(NSRange(location: cursorLocation, length: 0))
                             }
                         }
                     }
                 }
             } else {
                 // Already first responder, only reposition if explicitly requested
-                if moveCursorToEnd {
+                if let targetPosition = targetCursorPosition {
+                    let cursorLocation = min(targetPosition, textView.string.count)
+                    textView.setSelectedRange(NSRange(location: cursorLocation, length: 0))
+                    print("📍 Already focused - cursor moved to target position (location: \(cursorLocation), target: \(targetPosition))")
+                } else if moveCursorToEnd {
                     let endLocation = textView.string.count
                     textView.setSelectedRange(NSRange(location: endLocation, length: 0))
                     print("📍 Already focused - cursor moved to end (location: \(endLocation))")
                 }
-                // Don't move cursor to beginning if we're already focused
-                print("✅ Already first responder, not resetting cursor position")
+                // Don't move cursor if no explicit positioning requested
+                print("✅ Already first responder")
             }
         }
 
@@ -189,7 +203,9 @@ struct BlockTextView: NSViewRepresentable {
             if commandSelector == #selector(NSResponder.moveUp(_:)) {
                 if blockTextView.isOnFirstLine() {
                     print("✅ DELEGATE: Up arrow on first line - calling onMoveUp")
-                    blockTextView.onMoveUp?()
+                    let cursorPosition = textView.selectedRange().location
+                    print("📍 DELEGATE: Current cursor position: \(cursorPosition)")
+                    blockTextView.onMoveUp?(cursorPosition)
                     return true
                 }
                 return false // Allow default up movement
@@ -199,7 +215,9 @@ struct BlockTextView: NSViewRepresentable {
             if commandSelector == #selector(NSResponder.moveDown(_:)) {
                 if blockTextView.isOnLastLine() {
                     print("✅ DELEGATE: Down arrow on last line - calling onMoveDown")
-                    blockTextView.onMoveDown?()
+                    let cursorPosition = textView.selectedRange().location
+                    print("📍 DELEGATE: Current cursor position: \(cursorPosition)")
+                    blockTextView.onMoveDown?(cursorPosition)
                     return true
                 }
                 return false // Allow default down movement
