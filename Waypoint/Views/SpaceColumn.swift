@@ -11,13 +11,16 @@ import SwiftData
 struct SpaceColumn: View {
 	let space: Space?  // nil means "All" view
 	@Environment(ProjectStore.self) private var projectStore
+	@Environment(\.modelContext) private var modelContext
 	@Query private var projects: [Project]
 	@Query private var tags: [Tag]
+	@Query private var spaces: [Space]
 
 	@State private var isHoveringTab = false
 	@State private var isHoveringClose = false
 	@State private var showEditSpace = false
 	@State private var showBookmarks = true
+	@State private var showDeleteConfirmation = false
 
 	// Filtered projects for this space
 	private var spaceProjects: [Project] {
@@ -89,6 +92,16 @@ struct SpaceColumn: View {
 								showEditSpace = true
 							} label: {
 								SwiftUI.Label("Edit Space", systemImage: "pencil")
+							}
+
+							// Only show delete option if more than 1 space exists
+							if spaces.count > 1 {
+								Divider()
+								Button(role: .destructive) {
+									showDeleteConfirmation = true
+								} label: {
+									SwiftUI.Label("Delete Space", systemImage: "trash")
+								}
 							}
 						} label: {
 							Image(systemName: "ellipsis.circle")
@@ -273,5 +286,37 @@ struct SpaceColumn: View {
 			.frame(maxWidth: .infinity, alignment: .top)
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+		.confirmationDialog(
+			"Delete \"\(space?.name ?? "Space")\"?",
+			isPresented: $showDeleteConfirmation,
+			titleVisibility: .visible
+		) {
+			Button("Delete", role: .destructive) {
+				deleteSpace()
+			}
+			Button("Cancel", role: .cancel) {}
+		} message: {
+			Text("This will permanently delete the space and all its projects and tags. This action cannot be undone.")
+		}
+	}
+
+	// MARK: - Actions
+
+	private func deleteSpace() {
+		guard let space = space else { return }
+
+		// Delete the space (SwiftData relationships will handle cascading)
+		modelContext.delete(space)
+		try? modelContext.save()
+
+		// If the deleted space had any selected projects, clear the selection
+		// and navigate to a default view
+		if case .project(let projectId) = projectStore.selectedView {
+			// Check if the deleted project belonged to this space
+			let deletedProjectBelongedToSpace = spaceProjects.contains(where: { $0.id == projectId })
+			if deletedProjectBelongedToSpace {
+				projectStore.selectSystemView(.inbox)
+			}
+		}
 	}
 }

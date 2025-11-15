@@ -15,15 +15,10 @@ struct HorizontalSidebarContainer: View {
 	var body: some View {
 		ScrollView(.horizontal, showsIndicators: false) {
 			HStack(spacing: 0) {
-				// "All" Column (space: nil shows all projects and labels)
-				SpaceColumn(space: nil)
-					.id(0)
-					.containerRelativeFrame(.horizontal)
-
 				// Individual Space Columns
 				ForEach(Array(spaces.enumerated()), id: \.element.id) { index, space in
 					SpaceColumn(space: space)
-						.id(index + 1)
+						.id(index)
 						.containerRelativeFrame(.horizontal)
 				}
 			}

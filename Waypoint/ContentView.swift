@@ -28,6 +28,19 @@ struct ContentView: View {
 		.environment(projectStore)
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
 		.ignoresSafeArea()
+		.onAppear {
+			// Create default space if none exist
+			if spaces.isEmpty {
+				let defaultSpace = Space(
+					name: "Default",
+					spaceDescription: "Your default workspace",
+					icon: "person.3.fill",
+					color: "#007AFF"
+				)
+				modelContext.insert(defaultSpace)
+				try? modelContext.save()
+			}
+		}
 		.onChange(of: projectStore.selectedView) { oldValue, newValue in
 			// Close inspector and clear selected issue when switching views/tabs from sidebar
 			if isInspectorVisible {

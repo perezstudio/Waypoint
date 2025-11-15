@@ -11,6 +11,20 @@ import SwiftData
 @main
 struct WaypointApp: App {
     var sharedModelContainer: ModelContainer = {
+        // TEMPORARY: Delete the database to test fresh user flows
+        let fileManager = FileManager.default
+        let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+
+        // Delete all SwiftData files (main store + auxiliary files)
+        let filesToDelete = ["default.store", "default.store-shm", "default.store-wal"]
+        for filename in filesToDelete {
+            let fileURL = appSupportURL.appendingPathComponent(filename)
+            if fileManager.fileExists(atPath: fileURL.path) {
+                try? fileManager.removeItem(at: fileURL)
+                print("🗑️ TEMPORARY: Deleted \(filename)")
+            }
+        }
+
         do {
             // Use migration plan to handle schema changes
             return try ModelContainer(
