@@ -735,13 +735,7 @@ struct ProjectOverviewView: View {
 
 			if let project = project {
 				ProjectEditorView(project: project)
-					.padding(8)
-					.background(Color(nsColor: .controlBackgroundColor))
-					.clipShape(RoundedRectangle(cornerRadius: 8))
-					.overlay(
-						RoundedRectangle(cornerRadius: 8)
-							.stroke(Color.gray.opacity(0.2), lineWidth: 1)
-					)
+					.frame(maxWidth: .infinity, alignment: .topLeading)
 			}
 		}
 		.padding(20)

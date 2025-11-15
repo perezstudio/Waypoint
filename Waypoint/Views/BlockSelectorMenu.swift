@@ -69,6 +69,7 @@ struct BlockSelectorPopover: View {
     @Binding var searchText: String
     let onSelect: (BlockType) -> Void
     @State private var selectedIndex = 0
+    @FocusState private var isFocused: Bool
 
     private let allBlockTypes: [BlockType] = [
         .heading1, .heading2, .heading3,
@@ -86,66 +87,111 @@ struct BlockSelectorPopover: View {
     }
 
     var body: some View {
+        menuContent
+            .focusable()
+            .focused($isFocused)
+            .focusEffectDisabled()
+            .onKeyPress(.upArrow) { handleUpArrow() }
+            .onKeyPress(.downArrow) { handleDownArrow() }
+            .onKeyPress(.return) { handleReturn() }
+            .onKeyPress(.escape) { handleEscape() }
+            .onKeyPress(keys: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]) { handleNumberKey($0) }
+            .onChange(of: searchText) { oldValue, newValue in
+                selectedIndex = 0
+            }
+            .onChange(of: filteredBlockTypes) { oldValue, newValue in
+                if selectedIndex >= newValue.count {
+                    selectedIndex = max(0, newValue.count - 1)
+                }
+            }
+            .onAppear {
+                selectedIndex = 0
+                isFocused = true
+            }
+    }
+
+    private var menuContent: some View {
         VStack(alignment: .leading, spacing: 4) {
             ForEach(Array(filteredBlockTypes.enumerated()), id: \.element) { index, blockType in
-                Button(action: {
-                    onSelect(blockType)
-                    isPresented = false
-                }) {
-                    HStack(spacing: 12) {
-                        Image(systemName: blockType.icon)
-                            .frame(width: 20)
-                            .foregroundStyle(.blue)
-
-                        Text(blockType.displayName)
-                            .font(.subheadline)
-                            .foregroundStyle(.primary)
-
-                        Spacer()
-                    }
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(selectedIndex == index ? Color.accentColor.opacity(0.1) : Color.clear)
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                }
-                .buttonStyle(.plain)
+                blockTypeRow(index: index, blockType: blockType)
             }
         }
         .padding(8)
-        .frame(width: 280)
+        .frame(width: 300)
         .background(.regularMaterial)
         .clipShape(RoundedRectangle(cornerRadius: 12))
         .shadow(color: .black.opacity(0.1), radius: 8, x: 0, y: 4)
-        .onKeyPress(.upArrow) {
-            if selectedIndex > 0 {
-                selectedIndex -= 1
+    }
+
+    private func blockTypeRow(index: Int, blockType: BlockType) -> some View {
+        Button(action: {
+            onSelect(blockType)
+            isPresented = false
+        }) {
+            HStack(spacing: 12) {
+                Text("\(index + 1)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 16)
+
+                Image(systemName: blockType.icon)
+                    .frame(width: 20)
+                    .foregroundStyle(.blue)
+
+                Text(blockType.displayName)
+                    .font(.subheadline)
+                    .foregroundStyle(.primary)
+
+                Spacer()
             }
-            return .handled
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(selectedIndex == index ? Color.accentColor.opacity(0.1) : Color.clear)
+            .clipShape(RoundedRectangle(cornerRadius: 6))
         }
-        .onKeyPress(.downArrow) {
-            if selectedIndex < filteredBlockTypes.count - 1 {
-                selectedIndex += 1
-            }
-            return .handled
+        .buttonStyle(.plain)
+    }
+
+    private func handleUpArrow() -> KeyPress.Result {
+        if selectedIndex > 0 {
+            selectedIndex -= 1
         }
-        .onKeyPress(.return) {
-            if selectedIndex < filteredBlockTypes.count {
-                onSelect(filteredBlockTypes[selectedIndex])
-                isPresented = false
-            }
-            return .handled
+        return .handled
+    }
+
+    private func handleDownArrow() -> KeyPress.Result {
+        if selectedIndex < filteredBlockTypes.count - 1 {
+            selectedIndex += 1
         }
-        .onKeyPress(.escape) {
+        return .handled
+    }
+
+    private func handleReturn() -> KeyPress.Result {
+        if selectedIndex < filteredBlockTypes.count {
+            onSelect(filteredBlockTypes[selectedIndex])
+            isPresented = false
+        }
+        return .handled
+    }
+
+    private func handleEscape() -> KeyPress.Result {
+        isPresented = false
+        return .handled
+    }
+
+    private func handleNumberKey(_ keyPress: KeyPress) -> KeyPress.Result {
+        // Map key to number (1-9)
+        let keyToNumber: [KeyEquivalent: Int] = [
+            "1": 1, "2": 2, "3": 3, "4": 4, "5": 5,
+            "6": 6, "7": 7, "8": 8, "9": 9
+        ]
+
+        if let number = keyToNumber[keyPress.key],
+           number <= filteredBlockTypes.count {
+            onSelect(filteredBlockTypes[number - 1])
             isPresented = false
             return .handled
         }
-        .onChange(of: searchText) { oldValue, newValue in
-            selectedIndex = 0
-        }
-        .onChange(of: filteredBlockTypes) { oldValue, newValue in
-            if selectedIndex >= newValue.count {
-                selectedIndex = max(0, newValue.count - 1)
-            }
-        }
+        return .ignored
     }
 }

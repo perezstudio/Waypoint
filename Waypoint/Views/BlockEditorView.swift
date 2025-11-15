@@ -11,63 +11,85 @@ import SwiftData
 struct BlockEditorView: View {
     @Bindable var block: ContentBlock
     @FocusState.Binding var focusedBlockId: UUID?
+    @Binding var focusAtEndBlockId: UUID?
     let onTypeChange: (BlockType) -> Void
     let onSlashCommand: () -> Void
     let onNewLine: () -> Void
     let onBackspaceEmpty: () -> Void
-    let onMoveUp: () -> Void
-    let onMoveDown: () -> Void
+
+    @State private var shouldMoveCursorToEnd = false
 
     var body: some View {
-        HStack(alignment: .top, spacing: 8) {
-            // Block type indicator
-            blockTypeIndicator
-
-            // Content editor
-            contentEditor
-        }
-        .padding(.vertical, 4)
-    }
-
-    @ViewBuilder
-    private var blockTypeIndicator: some View {
-        Image(systemName: block.type.icon)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .frame(width: 20)
-            .opacity(focusedBlockId == block.id ? 1.0 : 0.3)
+        contentEditor
+            .padding(.vertical, 4)
     }
 
     @ViewBuilder
     private var contentEditor: some View {
-        TextField("", text: $block.content, axis: .vertical)
-            .textFieldStyle(.plain)
-            .font(fontForBlockType)
-            .foregroundStyle(colorForBlockType)
-            .focused($focusedBlockId, equals: block.id)
-            .onSubmit {
-                // Enter key creates new line
-                onNewLine()
+        HStack(alignment: .top, spacing: 6) {
+            // Add bullet or number prefix for list types
+            if let prefix = blockPrefix {
+                Text(prefix)
+                    .font(fontForBlockType)
+                    .foregroundStyle(.secondary)
             }
-            .onChange(of: block.content) { oldValue, newValue in
-                handleContentChange(oldValue: oldValue, newValue: newValue)
-            }
-            .onKeyPress(.delete) {
-                // Backspace on empty block
-                if block.content.isEmpty {
-                    onBackspaceEmpty()
-                    return .handled
+
+            TextField("", text: $block.content, prompt: placeholderText, axis: .vertical)
+                .textFieldStyle(.plain)
+                .font(fontForBlockType)
+                .foregroundStyle(colorForBlockType)
+                .focused($focusedBlockId, equals: block.id)
+                .onSubmit {
+                    // Enter key creates new line
+                    onNewLine()
                 }
-                return .ignored
-            }
-            .onKeyPress(.upArrow) {
-                onMoveUp()
-                return .handled
-            }
-            .onKeyPress(.downArrow) {
-                onMoveDown()
-                return .handled
-            }
+                .onChange(of: block.content) { oldValue, newValue in
+                    handleContentChange(oldValue: oldValue, newValue: newValue)
+
+                    // If we added a cursor positioning character, remove it
+                    if shouldMoveCursorToEnd && newValue.hasSuffix("\u{200B}") {
+                        block.content = String(newValue.dropLast())
+                        shouldMoveCursorToEnd = false
+                    }
+                }
+                .onChange(of: focusAtEndBlockId) { oldValue, newValue in
+                    // Check if this block should move cursor to end
+                    if newValue == block.id {
+                        shouldMoveCursorToEnd = true
+                        // Append zero-width space to move cursor to end
+                        block.content += "\u{200B}"
+                        focusAtEndBlockId = nil
+                    }
+                }
+                .onKeyPress { keyPress in
+                    // Check for backspace/delete key on empty block
+                    if (keyPress.characters == "\u{7F}" || keyPress.characters == "\u{08}") && block.content.isEmpty {
+                        onBackspaceEmpty()
+                        return .handled
+                    }
+                    return .ignored
+                }
+        }
+    }
+
+    private var blockPrefix: String? {
+        switch block.type {
+        case .bulletList:
+            return "•"
+        case .numberedList:
+            // Get the index of this block among numbered list blocks
+            return "\(block.order + 1)."
+        default:
+            return nil
+        }
+    }
+
+    private var placeholderText: Text? {
+        // Only show placeholder when this block is focused
+        if focusedBlockId == block.id {
+            return Text("Type / for commands...").foregroundStyle(.tertiary)
+        }
+        return nil
     }
 
     private var fontForBlockType: Font {

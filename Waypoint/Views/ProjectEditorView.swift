@@ -8,6 +8,14 @@
 import SwiftUI
 import SwiftData
 
+// Preference key for tracking block position
+struct BlockPositionPreferenceKey: PreferenceKey {
+    static var defaultValue: CGRect = .zero
+    static func reduce(value: inout CGRect, nextValue: () -> CGRect) {
+        value = nextValue()
+    }
+}
+
 struct ProjectEditorView: View {
     @Bindable var project: Project
     @Environment(\.modelContext) private var modelContext
@@ -15,6 +23,8 @@ struct ProjectEditorView: View {
     @State private var showBlockSelector = false
     @State private var blockSelectorSearchText = ""
     @State private var pendingBlockId: UUID?
+    @State private var blockSelectorPosition: CGRect = .zero
+    @State private var focusAtEndBlockId: UUID?
 
     private var sortedBlocks: [ContentBlock] {
         project.contentBlocks.sorted { $0.order < $1.order }
@@ -27,8 +37,10 @@ struct ProjectEditorView: View {
             } else {
                 blocksView
             }
+
+            Spacer()
         }
-        .frame(minHeight: 200)
+        .frame(minHeight: 200, maxHeight: .infinity, alignment: .top)
         .onAppear {
             // Create initial block if empty
             if sortedBlocks.isEmpty {
@@ -53,47 +65,61 @@ struct ProjectEditorView: View {
 
     @ViewBuilder
     private var blocksView: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            ForEach(sortedBlocks) { block in
-                BlockEditorView(
-                    block: block,
-                    focusedBlockId: $focusedBlockId,
-                    onTypeChange: { newType in
-                        handleTypeChange(for: block, newType: newType)
-                    },
-                    onSlashCommand: {
-                        handleSlashCommand(for: block)
-                    },
-                    onNewLine: {
-                        handleNewLine(after: block)
-                    },
-                    onBackspaceEmpty: {
-                        handleBackspaceEmpty(on: block)
-                    },
-                    onMoveUp: {
-                        handleMoveUp(from: block)
-                    },
-                    onMoveDown: {
-                        handleMoveDown(from: block)
-                    }
-                )
-                .id(block.id)
-                .popover(isPresented: Binding(
-                    get: { showBlockSelector && focusedBlockId == block.id },
-                    set: { newValue in
-                        if !newValue {
-                            showBlockSelector = false
-                            blockSelectorSearchText = ""
-                        }
-                    }
-                )) {
-                    BlockSelectorPopover(
-                        isPresented: $showBlockSelector,
-                        searchText: $blockSelectorSearchText,
-                        onSelect: { selectedType in
-                            handleBlockTypeSelection(for: block, type: selectedType)
+        ZStack(alignment: .topLeading) {
+            VStack(alignment: .leading, spacing: 2) {
+                ForEach(sortedBlocks) { block in
+                    BlockEditorView(
+                        block: block,
+                        focusedBlockId: $focusedBlockId,
+                        focusAtEndBlockId: $focusAtEndBlockId,
+                        onTypeChange: { newType in
+                            handleTypeChange(for: block, newType: newType)
+                        },
+                        onSlashCommand: {
+                            handleSlashCommand(for: block)
+                        },
+                        onNewLine: {
+                            handleNewLine(after: block)
+                        },
+                        onBackspaceEmpty: {
+                            handleBackspaceEmpty(on: block)
                         }
                     )
+                    .id(block.id)
+                    .background(
+                        GeometryReader { geometry in
+                            Color.clear.preference(
+                                key: BlockPositionPreferenceKey.self,
+                                value: showBlockSelector && pendingBlockId == block.id ? geometry.frame(in: .named("blockContainer")) : .zero
+                            )
+                        }
+                    )
+                }
+            }
+
+            // Block selector overlay
+            if showBlockSelector, let pendingId = pendingBlockId,
+               let block = sortedBlocks.first(where: { $0.id == pendingId }) {
+                BlockSelectorPopover(
+                    isPresented: $showBlockSelector,
+                    searchText: $blockSelectorSearchText,
+                    onSelect: { selectedType in
+                        handleBlockTypeSelection(for: block, type: selectedType)
+                    }
+                )
+                .offset(x: 30, y: blockSelectorPosition.minY + 30)
+            }
+        }
+        .coordinateSpace(name: "blockContainer")
+        .onPreferenceChange(BlockPositionPreferenceKey.self) { value in
+            blockSelectorPosition = value
+        }
+        .onChange(of: showBlockSelector) { oldValue, newValue in
+            // When menu is dismissed, restore focus to the block
+            if !newValue && oldValue {
+                if let pendingId = pendingBlockId {
+                    focusedBlockId = pendingId
+                    pendingBlockId = nil
                 }
             }
         }
@@ -117,6 +143,10 @@ struct ProjectEditorView: View {
     private func handleSlashCommand(for block: ContentBlock) {
         // Clear the "/" character
         block.content = ""
+        // Store which block opened the menu
+        pendingBlockId = block.id
+        // Clear focus from text field so menu can receive input
+        focusedBlockId = nil
         showBlockSelector = true
         blockSelectorSearchText = ""
     }
@@ -127,7 +157,8 @@ struct ProjectEditorView: View {
         try? modelContext.save()
         showBlockSelector = false
         blockSelectorSearchText = ""
-        // Keep focus on the block
+        pendingBlockId = nil
+        // Restore focus to the block
         focusedBlockId = block.id
     }
 
@@ -158,39 +189,34 @@ struct ProjectEditorView: View {
             return
         }
 
-        // Find previous block to focus
-        if let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
-           currentIndex > 0 {
+        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }) else {
+            return
+        }
+
+        // Find previous block to focus at end
+        if currentIndex > 0 {
             let previousBlock = sortedBlocks[currentIndex - 1]
+
+            // Delete the block first
+            modelContext.delete(block)
+            try? modelContext.save()
+
+            // Reorder remaining blocks
+            reorderBlocks()
+
+            // Focus previous block at the end
             focusedBlockId = previousBlock.id
+            focusAtEndBlockId = previousBlock.id
+        } else {
+            // If deleting the first block, just focus the next one
+            modelContext.delete(block)
+            try? modelContext.save()
+            reorderBlocks()
+
+            if let firstBlock = sortedBlocks.first {
+                focusedBlockId = firstBlock.id
+            }
         }
-
-        // Delete the block
-        modelContext.delete(block)
-        try? modelContext.save()
-
-        // Reorder remaining blocks
-        reorderBlocks()
-    }
-
-    private func handleMoveUp(from block: ContentBlock) {
-        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
-              currentIndex > 0 else {
-            return
-        }
-
-        let previousBlock = sortedBlocks[currentIndex - 1]
-        focusedBlockId = previousBlock.id
-    }
-
-    private func handleMoveDown(from block: ContentBlock) {
-        guard let currentIndex = sortedBlocks.firstIndex(where: { $0.id == block.id }),
-              currentIndex < sortedBlocks.count - 1 else {
-            return
-        }
-
-        let nextBlock = sortedBlocks[currentIndex + 1]
-        focusedBlockId = nextBlock.id
     }
 
     private func reorderBlocks() {
