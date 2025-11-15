@@ -23,6 +23,8 @@ struct BlockTextView: NSViewRepresentable {
     var onMoveRight: () -> Void  // Move to start of next block
     var onSubmit: () -> Void
     var onBackspaceEmpty: () -> Void
+    var onIndent: () -> Void  // Handle Tab key for indenting
+    var onOutdent: () -> Void  // Handle Shift-Tab key for outdenting
     var onTextChange: (String) -> Void
 
     func makeNSView(context: Context) -> BlockNSTextView {
@@ -60,6 +62,8 @@ struct BlockTextView: NSViewRepresentable {
         textView.onMoveRight = onMoveRight
         textView.onSubmit = onSubmit
         textView.onBackspaceEmpty = onBackspaceEmpty
+        textView.onIndent = onIndent
+        textView.onOutdent = onOutdent
 
         return textView
     }
@@ -89,6 +93,8 @@ struct BlockTextView: NSViewRepresentable {
         textView.onMoveRight = onMoveRight
         textView.onSubmit = onSubmit
         textView.onBackspaceEmpty = onBackspaceEmpty
+        textView.onIndent = onIndent
+        textView.onOutdent = onOutdent
 
         // Direct first responder management - only set cursor if NOT already first responder
         if requestFocus {
@@ -203,6 +209,20 @@ struct BlockTextView: NSViewRepresentable {
                     return true
                 }
                 return false // Allow default backspace
+            }
+
+            // Handle Tab key
+            if commandSelector == #selector(NSResponder.insertTab(_:)) {
+                print("⇥ DELEGATE: Tab key - calling onIndent")
+                blockTextView.onIndent?()
+                return true
+            }
+
+            // Handle Shift-Tab key
+            if commandSelector == #selector(NSResponder.insertBacktab(_:)) {
+                print("⇤ DELEGATE: Shift-Tab key - calling onOutdent")
+                blockTextView.onOutdent?()
+                return true
             }
 
             // Handle Left arrow

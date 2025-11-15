@@ -155,10 +155,110 @@ enum SchemaV3: VersionedSchema {
     }
 }
 
-// MARK: - Schema V4 (After adding ContentBlock for block editor)
+// MARK: - Schema V4 (After adding ContentBlock for block editor - WITHOUT indentLevel)
 
 enum SchemaV4: VersionedSchema {
     static var versionIdentifier = Schema.Version(4, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [ProjectV4.self, IssueV4.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlockV4.self]
+    }
+
+    @Model
+    final class ProjectV4 {
+        var id: UUID
+        var name: String
+        var icon: String
+        var color: String
+        var status: Status
+        var projectDescription: String?
+        var createdAt: Date
+        var updatedAt: Date
+
+        @Relationship(deleteRule: .cascade, inverse: \IssueV4.project)
+        var issues: [IssueV4] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Resource.project)
+        var resources: [Resource] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \ProjectUpdate.project)
+        var updates: [ProjectUpdate] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
+        var milestones: [Milestone] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \ContentBlockV4.project)
+        var contentBlocks: [ContentBlockV4] = []
+
+        var space: Space?
+
+        init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: Space? = nil) {
+            self.id = UUID()
+            self.name = name
+            self.icon = icon
+            self.color = color
+            self.status = status
+            self.createdAt = Date()
+            self.updatedAt = Date()
+            self.space = space
+        }
+    }
+
+    @Model
+    final class IssueV4 {
+        var id: UUID
+        var title: String
+        var issueDescription: String?
+        var status: Status
+        var priority: IssuePriority
+        var createdAt: Date
+        var updatedAt: Date
+        var dueDate: Date?
+
+        var project: ProjectV4?
+
+        @Relationship(deleteRule: .nullify, inverse: \Tag.issues)
+        var tags: [Tag] = []
+
+        init(title: String, status: Status = .todo, priority: IssuePriority = .medium, project: ProjectV4? = nil) {
+            self.id = UUID()
+            self.title = title
+            self.status = status
+            self.priority = priority
+            self.createdAt = Date()
+            self.updatedAt = Date()
+            self.project = project
+        }
+    }
+
+    @Model
+    final class ContentBlockV4 {
+        var id: UUID
+        var type: BlockType
+        var content: String
+        var order: Int
+        // No indentLevel in V4
+        var createdAt: Date
+        var updatedAt: Date
+
+        var project: ProjectV4?
+
+        init(type: BlockType = .paragraph, content: String = "", order: Int = 0, project: ProjectV4? = nil) {
+            self.id = UUID()
+            self.type = type
+            self.content = content
+            self.order = order
+            self.createdAt = Date()
+            self.updatedAt = Date()
+            self.project = project
+        }
+    }
+}
+
+// MARK: - Schema V5 (After adding indentLevel to ContentBlock)
+
+enum SchemaV5: VersionedSchema {
+    static var versionIdentifier = Schema.Version(5, 0, 0)
 
     static var models: [any PersistentModel.Type] {
         [Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self]
@@ -169,7 +269,7 @@ enum SchemaV4: VersionedSchema {
 
 enum WaypointMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [SchemaV1.self, SchemaV2.self, SchemaV3.self, SchemaV4.self]
+        [SchemaV1.self, SchemaV2.self, SchemaV3.self, SchemaV4.self, SchemaV5.self]
     }
 
     static let migrateV1toV2 = MigrationStage.lightweight(
@@ -293,7 +393,12 @@ enum WaypointMigrationPlan: SchemaMigrationPlan {
         toVersion: SchemaV4.self
     )
 
+    static let migrateV4toV5 = MigrationStage.lightweight(
+        fromVersion: SchemaV4.self,
+        toVersion: SchemaV5.self
+    )
+
     static var stages: [MigrationStage] {
-        [migrateV1toV2, migrateV2toV3, migrateV3toV4]
+        [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5]
     }
 }

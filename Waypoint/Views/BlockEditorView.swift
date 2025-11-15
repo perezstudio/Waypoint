@@ -22,15 +22,18 @@ struct BlockEditorView: View {
     let onMoveDown: (Int) -> Void  // Now passes cursor position
     let onMoveLeft: () -> Void  // Move to end of previous block
     let onMoveRight: () -> Void  // Move to start of next block
+    let onIndent: () -> Void  // Handle Tab key for indenting
+    let onOutdent: () -> Void  // Handle Shift-Tab key for outdenting
 
     var body: some View {
         contentEditor
             .padding(.vertical, 4)
+            .padding(.leading, CGFloat(block.indentLevel) * 20)
     }
 
     @ViewBuilder
     private var contentEditor: some View {
-        HStack(alignment: .top, spacing: 6) {
+        HStack(alignment: .firstTextBaseline, spacing: 6) {
             // Add bullet or number prefix for list types
             if let prefix = blockPrefix {
                 Text(prefix)
@@ -55,6 +58,8 @@ struct BlockEditorView: View {
                 onMoveRight: onMoveRight,
                 onSubmit: onNewLine,
                 onBackspaceEmpty: onBackspaceEmpty,
+                onIndent: onIndent,
+                onOutdent: onOutdent,
                 onTextChange: { newValue in
                     handleContentChange(oldValue: block.content, newValue: newValue)
                 }
@@ -76,16 +81,71 @@ struct BlockEditorView: View {
     private var blockPrefix: String? {
         switch block.type {
         case .bulletList:
-            return "•"
+            return getBulletSymbol(for: block.indentLevel)
         case .numberedList:
-            // Use the calculated list number
+            // Use the calculated list number with appropriate formatting
             if let number = listNumber {
-                return "\(number)."
+                return getNumberFormat(number: number, indentLevel: block.indentLevel)
             }
-            return "1."
+            return getNumberFormat(number: 1, indentLevel: block.indentLevel)
         default:
             return nil
         }
+    }
+
+    private func getBulletSymbol(for indentLevel: Int) -> String {
+        let symbols = ["•", "◦", "▪"]
+        let index = indentLevel % symbols.count
+        return symbols[index]
+    }
+
+    private func getNumberFormat(number: Int, indentLevel: Int) -> String {
+        switch indentLevel {
+        case 0:
+            // Level 0: decimal (1, 2, 3...)
+            return "\(number)."
+        case 1:
+            // Level 1: lowercase letters (a, b, c...)
+            return "\(numberToLetter(number))."
+        case 2:
+            // Level 2: roman numerals (i, ii, iii...)
+            return "\(numberToRoman(number))."
+        default:
+            // Level 3+: alternate between letters and roman numerals
+            if indentLevel % 2 == 1 {
+                return "\(numberToLetter(number))."
+            } else {
+                return "\(numberToRoman(number))."
+            }
+        }
+    }
+
+    private func numberToLetter(_ number: Int) -> String {
+        guard number > 0 else { return "a" }
+        let letters = "abcdefghijklmnopqrstuvwxyz"
+        let index = (number - 1) % letters.count
+        return String(letters[letters.index(letters.startIndex, offsetBy: index)])
+    }
+
+    private func numberToRoman(_ number: Int) -> String {
+        guard number > 0 else { return "i" }
+        let romanNumerals: [(Int, String)] = [
+            (1000, "m"), (900, "cm"), (500, "d"), (400, "cd"),
+            (100, "c"), (90, "xc"), (50, "l"), (40, "xl"),
+            (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i")
+        ]
+
+        var result = ""
+        var num = number
+
+        for (value, numeral) in romanNumerals {
+            while num >= value {
+                result += numeral
+                num -= value
+            }
+        }
+
+        return result
     }
 
     private var placeholderText: Text? {

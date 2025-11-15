@@ -98,6 +98,12 @@ struct ProjectEditorView: View {
                         },
                         onMoveRight: {
                             handleMoveRight(from: block)
+                        },
+                        onIndent: {
+                            handleIndent(on: block)
+                        },
+                        onOutdent: {
+                            handleOutdent(on: block)
                         }
                     )
                     .id(block.id)
@@ -178,13 +184,16 @@ struct ProjectEditorView: View {
     }
 
     private func handleNewLine(after block: ContentBlock) {
-        // Determine the type for the new block
-        // If current block is a list, continue with the same list type
+        // Determine the type and indent level for the new block
+        // If current block is a list, continue with the same list type and indent level
         let newBlockType: BlockType
+        let newIndentLevel: Int
         if block.type == .bulletList || block.type == .numberedList {
             newBlockType = block.type
+            newIndentLevel = block.indentLevel  // Preserve indent level
         } else {
             newBlockType = .paragraph
+            newIndentLevel = 0
         }
 
         let newOrder = block.order + 1
@@ -194,7 +203,7 @@ struct ProjectEditorView: View {
             nextBlock.order += 1
         }
 
-        let newBlock = ContentBlock(type: newBlockType, content: "", order: newOrder, project: project)
+        let newBlock = ContentBlock(type: newBlockType, content: "", order: newOrder, indentLevel: newIndentLevel, project: project)
         modelContext.insert(newBlock)
         try? modelContext.save()
 
@@ -314,6 +323,45 @@ struct ProjectEditorView: View {
         focusedBlockId = nextBlock.id
     }
 
+    private func handleIndent(on block: ContentBlock) {
+        // Only indent bullet and numbered lists
+        guard block.type == .bulletList || block.type == .numberedList else {
+            return
+        }
+
+        // Cap at a reasonable max indent level
+        guard block.indentLevel < 5 else {
+            return
+        }
+
+        block.indentLevel += 1
+        block.updatedAt = Date()
+        try? modelContext.save()
+        print("📝 Indented block to level \(block.indentLevel)")
+    }
+
+    private func handleOutdent(on block: ContentBlock) {
+        // Only outdent bullet and numbered lists
+        guard block.type == .bulletList || block.type == .numberedList else {
+            return
+        }
+
+        if block.indentLevel > 0 {
+            // Decrease indent level
+            block.indentLevel -= 1
+            block.updatedAt = Date()
+            try? modelContext.save()
+            print("📝 Outdented block to level \(block.indentLevel)")
+        } else {
+            // At level 0, convert to paragraph
+            block.type = .paragraph
+            block.indentLevel = 0
+            block.updatedAt = Date()
+            try? modelContext.save()
+            print("📝 Converted list block to paragraph")
+        }
+    }
+
     private func calculateListNumber(for block: ContentBlock) -> Int? {
         // Only calculate for numbered lists
         guard block.type == .numberedList else {
@@ -333,15 +381,15 @@ struct ProjectEditorView: View {
         // Check the previous block
         let previousBlock = sortedBlocks[currentIndex - 1]
 
-        // If previous block is also a numbered list, increment its number
-        if previousBlock.type == .numberedList {
+        // If previous block is also a numbered list at the SAME indent level, increment its number
+        if previousBlock.type == .numberedList && previousBlock.indentLevel == block.indentLevel {
             // Recursively calculate the previous block's number and add 1
             if let previousNumber = calculateListNumber(for: previousBlock) {
                 return previousNumber + 1
             }
         }
 
-        // If previous block is not a numbered list, start at 1
+        // If previous block is not a numbered list at the same level, start at 1
         return 1
     }
 }

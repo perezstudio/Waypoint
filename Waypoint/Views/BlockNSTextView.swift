@@ -15,6 +15,8 @@ class BlockNSTextView: NSTextView {
     var onMoveRight: (() -> Void)?  // Move to start of next block
     var onSubmit: (() -> Void)?
     var onBackspaceEmpty: (() -> Void)?
+    var onIndent: (() -> Void)?  // Handle Tab key for indenting
+    var onOutdent: (() -> Void)?  // Handle Shift-Tab key for outdenting
     var onBecomeFirstResponder: (() -> Void)?
 
     override var acceptsFirstResponder: Bool {
@@ -76,6 +78,20 @@ class BlockNSTextView: NSTextView {
                 onBackspaceEmpty?()
                 return
             }
+        }
+
+        // Handle Tab key
+        if selector == #selector(NSResponder.insertTab(_:)) {
+            print("⇥ Tab key - calling onIndent")
+            onIndent?()
+            return
+        }
+
+        // Handle Shift-Tab key
+        if selector == #selector(NSResponder.insertBacktab(_:)) {
+            print("⇤ Shift-Tab key - calling onOutdent")
+            onOutdent?()
+            return
         }
 
         // Handle Left arrow
