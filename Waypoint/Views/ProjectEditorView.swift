@@ -184,6 +184,25 @@ struct ProjectEditorView: View {
     }
 
     private func handleNewLine(after block: ContentBlock) {
+        // If current block is an empty list, outdent it instead of creating a new block
+        if (block.type == .bulletList || block.type == .numberedList) && block.content.isEmpty {
+            if block.indentLevel > 0 {
+                // Outdent the current block
+                block.indentLevel -= 1
+                block.updatedAt = Date()
+                try? modelContext.save()
+                print("📝 Outdented empty list block to level \(block.indentLevel)")
+            } else {
+                // At level 0, convert to paragraph
+                block.type = .paragraph
+                block.indentLevel = 0
+                block.updatedAt = Date()
+                try? modelContext.save()
+                print("📝 Converted empty list block to paragraph")
+            }
+            return
+        }
+
         // Determine the type and indent level for the new block
         // If current block is a list, continue with the same list type and indent level
         let newBlockType: BlockType

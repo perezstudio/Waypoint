@@ -33,12 +33,13 @@ struct BlockEditorView: View {
 
     @ViewBuilder
     private var contentEditor: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 6) {
+        HStack(alignment: .top, spacing: 6) {
             // Add bullet or number prefix for list types
             if let prefix = blockPrefix {
                 Text(prefix)
                     .font(fontForBlockType)
                     .foregroundStyle(.secondary)
+                    .padding(.top, 4)  // Add slight top padding to align with text
             }
 
             BlockTextView(
