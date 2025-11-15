@@ -397,18 +397,26 @@ struct ProjectEditorView: View {
             return 1
         }
 
-        // Check the previous block
-        let previousBlock = sortedBlocks[currentIndex - 1]
+        // Search backwards for the most recent numbered list at the same indent level
+        for i in stride(from: currentIndex - 1, through: 0, by: -1) {
+            let previousBlock = sortedBlocks[i]
 
-        // If previous block is also a numbered list at the SAME indent level, increment its number
-        if previousBlock.type == .numberedList && previousBlock.indentLevel == block.indentLevel {
-            // Recursively calculate the previous block's number and add 1
-            if let previousNumber = calculateListNumber(for: previousBlock) {
-                return previousNumber + 1
+            // Found a numbered list at the same indent level
+            if previousBlock.type == .numberedList && previousBlock.indentLevel == block.indentLevel {
+                // Recursively calculate that block's number and add 1
+                if let previousNumber = calculateListNumber(for: previousBlock) {
+                    return previousNumber + 1
+                }
+            }
+
+            // If we encounter a block at a lower indent level, stop searching
+            // (we've gone back to a parent level, so this should start at 1)
+            if previousBlock.indentLevel < block.indentLevel {
+                break
             }
         }
 
-        // If previous block is not a numbered list at the same level, start at 1
+        // No previous numbered list at the same level found, start at 1
         return 1
     }
 }

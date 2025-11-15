@@ -51,7 +51,10 @@ struct BlockEditorView: View {
                 moveCursorToEnd: focusAtEndBlockId == block.id,
                 targetCursorPosition: targetCursorPosition,
                 onBecameFocused: {
-                    focusedBlockId = block.id
+                    // Defer state update to avoid modifying state during view update
+                    DispatchQueue.main.async {
+                        focusedBlockId = block.id
+                    }
                 },
                 onMoveUp: onMoveUp,
                 onMoveDown: onMoveDown,
@@ -62,10 +65,13 @@ struct BlockEditorView: View {
                 onIndent: onIndent,
                 onOutdent: onOutdent,
                 onTextChange: { newValue in
-                    handleContentChange(oldValue: block.content, newValue: newValue)
+                    // Defer state update to avoid modifying state during view update
+                    DispatchQueue.main.async {
+                        handleContentChange(oldValue: block.content, newValue: newValue)
+                    }
                 }
             )
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
             .onChange(of: focusAtEndBlockId) { oldValue, newValue in
                 // Reset the flag after it's been processed
                 if newValue == block.id {
