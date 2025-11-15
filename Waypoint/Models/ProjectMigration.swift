@@ -114,7 +114,54 @@ enum SchemaV3: VersionedSchema {
     static var versionIdentifier = Schema.Version(3, 0, 0)
 
     static var models: [any PersistentModel.Type] {
-        [Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self]
+        [ProjectV3.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self]
+    }
+
+    @Model
+    final class ProjectV3 {
+        var id: UUID
+        var name: String
+        var icon: String
+        var color: String
+        var status: Status
+        var projectDescription: String?
+        var createdAt: Date
+        var updatedAt: Date
+
+        @Relationship(deleteRule: .cascade, inverse: \Issue.project)
+        var issues: [Issue] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Resource.project)
+        var resources: [Resource] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \ProjectUpdate.project)
+        var updates: [ProjectUpdate] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
+        var milestones: [Milestone] = []
+
+        var space: Space?
+
+        init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: Space? = nil) {
+            self.id = UUID()
+            self.name = name
+            self.icon = icon
+            self.color = color
+            self.status = status
+            self.createdAt = Date()
+            self.updatedAt = Date()
+            self.space = space
+        }
+    }
+}
+
+// MARK: - Schema V4 (After adding ContentBlock for block editor)
+
+enum SchemaV4: VersionedSchema {
+    static var versionIdentifier = Schema.Version(4, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self]
     }
 }
 
@@ -122,7 +169,7 @@ enum SchemaV3: VersionedSchema {
 
 enum WaypointMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [SchemaV1.self, SchemaV2.self, SchemaV3.self]
+        [SchemaV1.self, SchemaV2.self, SchemaV3.self, SchemaV4.self]
     }
 
     static let migrateV1toV2 = MigrationStage.lightweight(
@@ -241,7 +288,12 @@ enum WaypointMigrationPlan: SchemaMigrationPlan {
         toVersion: SchemaV3.self
     )
 
+    static let migrateV3toV4 = MigrationStage.lightweight(
+        fromVersion: SchemaV3.self,
+        toVersion: SchemaV4.self
+    )
+
     static var stages: [MigrationStage] {
-        [migrateV1toV2, migrateV2toV3]
+        [migrateV1toV2, migrateV2toV3, migrateV3toV4]
     }
 }

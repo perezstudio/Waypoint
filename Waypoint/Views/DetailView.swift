@@ -537,8 +537,6 @@ struct ProjectOverviewView: View {
 	@State private var showAddResource = false
 	@State private var showAddUpdate = false
 	@State private var showAddMilestone = false
-	@State private var projectDescription = ""
-	@State private var isEditingDescription = false
 
 	private var project: Project? {
 		projectStore.selectedProject
@@ -603,11 +601,6 @@ struct ProjectOverviewView: View {
 			}
 			.frame(maxWidth: .infinity)
 			.padding(32)
-		}
-		.onAppear {
-			if let project = project {
-				projectDescription = project.projectDescription ?? ""
-			}
 		}
 		.sheet(isPresented: $showAddResource) {
 			if let project = project {
@@ -740,27 +733,15 @@ struct ProjectOverviewView: View {
 		VStack(alignment: .leading, spacing: 12) {
 			SectionHeader(title: "Description")
 
-			TextEditor(text: $projectDescription)
-				.font(.body)
-				.frame(minHeight: 200)
-				.padding(8)
-				.background(Color(nsColor: .controlBackgroundColor))
-				.clipShape(RoundedRectangle(cornerRadius: 8))
-				.overlay(
-					RoundedRectangle(cornerRadius: 8)
-						.stroke(Color.gray.opacity(0.2), lineWidth: 1)
-				)
-				.onChange(of: projectDescription) { oldValue, newValue in
-					saveDescription(newValue)
-				}
-
-			if projectDescription.isEmpty {
-				Text("Add a description for this project...")
-					.font(.caption)
-					.foregroundStyle(.tertiary)
-					.padding(.top, -200)
-					.padding(.leading, 12)
-					.allowsHitTesting(false)
+			if let project = project {
+				ProjectEditorView(project: project)
+					.padding(8)
+					.background(Color(nsColor: .controlBackgroundColor))
+					.clipShape(RoundedRectangle(cornerRadius: 8))
+					.overlay(
+						RoundedRectangle(cornerRadius: 8)
+							.stroke(Color.gray.opacity(0.2), lineWidth: 1)
+					)
 			}
 		}
 		.padding(20)
@@ -791,12 +772,6 @@ struct ProjectOverviewView: View {
 		.padding(20)
 		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 12))
-	}
-
-	private func saveDescription(_ newValue: String) {
-		guard let project = project else { return }
-		project.projectDescription = newValue
-		try? modelContext.save()
 	}
 
 	private func toggleMilestone(_ milestone: Milestone, completed: Bool) {

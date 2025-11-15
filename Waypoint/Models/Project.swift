@@ -31,6 +31,9 @@ final class Project {
     @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
     var milestones: [Milestone] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \ContentBlock.project)
+    var contentBlocks: [ContentBlock] = []
+
     var space: Space?
 
     init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: Space? = nil) {
