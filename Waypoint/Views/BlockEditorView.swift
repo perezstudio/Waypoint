@@ -29,6 +29,7 @@ struct BlockEditorView: View {
         contentEditor
             .padding(.vertical, 4)
             .padding(.leading, CGFloat(block.indentLevel) * 20)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
@@ -71,6 +72,7 @@ struct BlockEditorView: View {
                     }
                 }
             )
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .onChange(of: focusAtEndBlockId) { oldValue, newValue in
                 // Reset the flag after it's been processed

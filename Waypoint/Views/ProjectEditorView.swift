@@ -38,8 +38,6 @@ struct ProjectEditorView: View {
             } else {
                 blocksView
             }
-
-            Spacer()
         }
         .frame(minHeight: 200, maxHeight: .infinity, alignment: .top)
         .onAppear {
@@ -117,6 +115,7 @@ struct ProjectEditorView: View {
                     )
                 }
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
 
             // Block selector overlay
             if showBlockSelector, let pendingId = pendingBlockId,
