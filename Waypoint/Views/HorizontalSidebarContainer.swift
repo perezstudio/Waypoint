@@ -9,6 +9,7 @@ import SwiftUI
 import SwiftData
 
 struct HorizontalSidebarContainer: View {
+	@Environment(ProjectStore.self) private var projectStore
 	@Query private var spaces: [Space]
 	@State private var scrollPosition: Int? = 0
 
@@ -27,6 +28,18 @@ struct HorizontalSidebarContainer: View {
 		.scrollTargetBehavior(.paging)
 		.scrollPosition(id: $scrollPosition)
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.onAppear {
+			// Set initial current space
+			if let firstSpace = spaces.first {
+				projectStore.currentSpace = firstSpace
+			}
+		}
+		.onChange(of: scrollPosition) { oldValue, newValue in
+			// Update current space when scroll position changes
+			if let position = newValue, position < spaces.count {
+				projectStore.currentSpace = spaces[position]
+			}
+		}
 	}
 }
 

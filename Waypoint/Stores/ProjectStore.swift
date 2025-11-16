@@ -65,6 +65,7 @@ class ProjectStore {
     var issuesViewMode: IssuesViewMode = .board
     var selectedIssue: Issue?
     var cameFromProjectsList: Bool = false
+    var currentSpace: Space? = nil  // Currently active space based on sidebar scroll position
 
     init() {}
 

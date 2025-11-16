@@ -8,6 +8,7 @@ import SwiftData
 
 struct TodayView: View {
     @Environment(ViewSettingsStore.self) private var viewSettingsStore
+    @Environment(ProjectStore.self) private var projectStore
     @Query private var allIssues: [Issue]
     @State private var showingCreateIssue = false
     @State private var createIssueWithStatus: Status?
@@ -91,18 +92,16 @@ struct TodayView: View {
                 .foregroundStyle(.secondary)
                 .multilineTextAlignment(.center)
 
-            Button(action: { showingCreateIssue = true }) {
-                HStack {
-                    Image(systemName: "plus")
-                    Text("Create Issue")
-                }
-                .padding(.horizontal, 20)
-                .padding(.vertical, 10)
-                .background(.blue)
-                .foregroundStyle(.white)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-            }
-            .buttonStyle(.plain)
+            KeyboardShortcutButton(
+                label: "Create Issue",
+                action: { showingCreateIssue = true },
+                icon: "plus",
+                iconColor: .white,
+                shortcutKey: "⇧N",
+                tooltip: "Create new issue (⌘⇧N)",
+                style: .primary,
+                accentColor: projectStore.currentSpace.map { AppColor.color(from: $0.color) } ?? SystemView.today.color
+            )
             .padding(.top, 8)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)

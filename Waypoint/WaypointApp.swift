@@ -12,6 +12,8 @@ import SwiftData
 struct WaypointApp: App {
     var sharedModelContainer: ModelContainer = {
         // TEMPORARY: Delete the database to test fresh user flows
+        // Uncomment the code below to reset the database on app launch
+        /*
         let fileManager = FileManager.default
         let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
 
@@ -24,6 +26,7 @@ struct WaypointApp: App {
                 print("🗑️ TEMPORARY: Deleted \(filename)")
             }
         }
+        */
 
         do {
             // Use migration plan to handle schema changes
