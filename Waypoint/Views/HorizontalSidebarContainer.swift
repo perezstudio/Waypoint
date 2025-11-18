@@ -10,7 +10,7 @@ import SwiftData
 
 struct HorizontalSidebarContainer: View {
 	@Environment(ProjectStore.self) private var projectStore
-	@Query private var spaces: [Space]
+	@Query(sort: \Space.sort, order: .forward) private var spaces: [Space]
 	@State private var scrollPosition: Int? = 0
 
 	var body: some View {
@@ -38,6 +38,13 @@ struct HorizontalSidebarContainer: View {
 			// Update current space when scroll position changes
 			if let position = newValue, position < spaces.count {
 				projectStore.currentSpace = spaces[position]
+			}
+		}
+		.onChange(of: projectStore.currentSpace) { oldValue, newValue in
+			// Scroll to the newly set current space (e.g., after creating a new space)
+			if let currentSpace = newValue,
+			   let index = spaces.firstIndex(where: { $0.id == currentSpace.id }) {
+				scrollPosition = index
 			}
 		}
 	}

@@ -261,6 +261,103 @@ enum SchemaV5: VersionedSchema {
     static var versionIdentifier = Schema.Version(5, 0, 0)
 
     static var models: [any PersistentModel.Type] {
+        [ProjectV5.self, Issue.self, Item.self, TagV5.self, SpaceV5.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self]
+    }
+
+    @Model
+    final class SpaceV5 {
+        var id: UUID
+        var name: String
+        var spaceDescription: String?
+        var icon: String
+        var color: String
+        var createdAt: Date
+        // No sort field in V5
+
+        @Relationship(deleteRule: .nullify, inverse: \ProjectV5.space)
+        var projects: [ProjectV5] = []
+
+        @Relationship(deleteRule: .nullify, inverse: \TagV5.space)
+        var tags: [TagV5] = []
+
+        init(name: String, spaceDescription: String? = nil, icon: String = "person.3.fill", color: String = "#007AFF") {
+            self.id = UUID()
+            self.name = name
+            self.spaceDescription = spaceDescription
+            self.icon = icon
+            self.color = color
+            self.createdAt = Date()
+        }
+    }
+
+    @Model
+    final class ProjectV5 {
+        var id: UUID
+        var name: String
+        var icon: String
+        var color: String
+        var status: Status
+        var projectDescription: String?
+        var createdAt: Date
+        var updatedAt: Date
+
+        @Relationship(deleteRule: .cascade, inverse: \Issue.project)
+        var issues: [Issue] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Resource.project)
+        var resources: [Resource] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \ProjectUpdate.project)
+        var updates: [ProjectUpdate] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
+        var milestones: [Milestone] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \ContentBlock.project)
+        var contentBlocks: [ContentBlock] = []
+
+        var space: SpaceV5?
+
+        init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: SpaceV5? = nil) {
+            self.id = UUID()
+            self.name = name
+            self.icon = icon
+            self.color = color
+            self.status = status
+            self.createdAt = Date()
+            self.updatedAt = Date()
+            self.space = space
+        }
+    }
+
+    @Model
+    final class TagV5 {
+        var id: UUID
+        var name: String
+        var color: String
+        var createdAt: Date
+
+        @Relationship(deleteRule: .nullify, inverse: \Issue.tags)
+        var issues: [Issue] = []
+
+        var space: SpaceV5?
+
+        init(name: String, color: String = "#007AFF", space: SpaceV5? = nil) {
+            self.id = UUID()
+            self.name = name
+            self.color = color
+            self.createdAt = Date()
+            self.space = space
+        }
+    }
+}
+
+// MARK: - Schema V6 (After adding sort field to Space)
+
+enum SchemaV6: VersionedSchema {
+    static var versionIdentifier = Schema.Version(6, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
         [Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self]
     }
 }
@@ -269,7 +366,7 @@ enum SchemaV5: VersionedSchema {
 
 enum WaypointMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [SchemaV1.self, SchemaV2.self, SchemaV3.self, SchemaV4.self, SchemaV5.self]
+        [SchemaV1.self, SchemaV2.self, SchemaV3.self, SchemaV4.self, SchemaV5.self, SchemaV6.self]
     }
 
     static let migrateV1toV2 = MigrationStage.lightweight(
@@ -398,7 +495,128 @@ enum WaypointMigrationPlan: SchemaMigrationPlan {
         toVersion: SchemaV5.self
     )
 
+    static let migrateV5toV6 = MigrationStage.custom(
+        fromVersion: SchemaV5.self,
+        toVersion: SchemaV6.self,
+        willMigrate: { context in
+            // Fetch all V5 data
+            let spacesDescriptor = FetchDescriptor<SchemaV5.SpaceV5>(
+                sortBy: [SortDescriptor(\.createdAt, order: .forward)]
+            )
+            let v5Spaces = try context.fetch(spacesDescriptor)
+
+            let projectsDescriptor = FetchDescriptor<SchemaV5.ProjectV5>()
+            let v5Projects = try context.fetch(projectsDescriptor)
+
+            let tagsDescriptor = FetchDescriptor<SchemaV5.TagV5>()
+            let v5Tags = try context.fetch(tagsDescriptor)
+
+            print("📦 Migrating \(v5Spaces.count) spaces, \(v5Projects.count) projects, \(v5Tags.count) tags to V6")
+
+            // Store space data
+            var spacesData: [(id: UUID, name: String, description: String?, icon: String, color: String, createdAt: Date, sort: Int)] = []
+            for (index, oldSpace) in v5Spaces.enumerated() {
+                spacesData.append((
+                    id: oldSpace.id,
+                    name: oldSpace.name,
+                    description: oldSpace.spaceDescription,
+                    icon: oldSpace.icon,
+                    color: oldSpace.color,
+                    createdAt: oldSpace.createdAt,
+                    sort: index  // Assign sort based on creation order
+                ))
+            }
+
+            // Store project data
+            var projectsData: [(id: UUID, name: String, icon: String, color: String, status: Status, description: String?, createdAt: Date, updatedAt: Date, spaceID: UUID?)] = []
+            for oldProject in v5Projects {
+                projectsData.append((
+                    id: oldProject.id,
+                    name: oldProject.name,
+                    icon: oldProject.icon,
+                    color: oldProject.color,
+                    status: oldProject.status,
+                    description: oldProject.projectDescription,
+                    createdAt: oldProject.createdAt,
+                    updatedAt: oldProject.updatedAt,
+                    spaceID: oldProject.space?.id
+                ))
+            }
+
+            // Store tag data
+            var tagsData: [(id: UUID, name: String, color: String, createdAt: Date, spaceID: UUID?)] = []
+            for oldTag in v5Tags {
+                tagsData.append((
+                    id: oldTag.id,
+                    name: oldTag.name,
+                    color: oldTag.color,
+                    createdAt: oldTag.createdAt,
+                    spaceID: oldTag.space?.id
+                ))
+            }
+
+            // Delete old entities
+            for oldSpace in v5Spaces { context.delete(oldSpace) }
+            for oldProject in v5Projects { context.delete(oldProject) }
+            for oldTag in v5Tags { context.delete(oldTag) }
+
+            try context.save()
+
+            // Create new V6 spaces with sort field
+            var spaceMap: [UUID: Space] = [:]
+            for data in spacesData {
+                let newSpace = Space(
+                    name: data.name,
+                    spaceDescription: data.description,
+                    icon: data.icon,
+                    color: data.color,
+                    sort: data.sort
+                )
+                newSpace.id = data.id
+                newSpace.createdAt = data.createdAt
+
+                context.insert(newSpace)
+                spaceMap[newSpace.id] = newSpace
+                print("  ✓ Migrated space: \(newSpace.name) → sort: \(newSpace.sort)")
+            }
+
+            // Create new V6 projects
+            for data in projectsData {
+                let newProject = Project(
+                    name: data.name,
+                    icon: data.icon,
+                    color: data.color,
+                    status: data.status,
+                    space: data.spaceID != nil ? spaceMap[data.spaceID!] : nil
+                )
+                newProject.id = data.id
+                newProject.projectDescription = data.description
+                newProject.createdAt = data.createdAt
+                newProject.updatedAt = data.updatedAt
+
+                context.insert(newProject)
+            }
+
+            // Create new V6 tags
+            for data in tagsData {
+                let newTag = Tag(
+                    name: data.name,
+                    color: data.color,
+                    space: data.spaceID != nil ? spaceMap[data.spaceID!] : nil
+                )
+                newTag.id = data.id
+                newTag.createdAt = data.createdAt
+
+                context.insert(newTag)
+            }
+
+            try context.save()
+            print("✅ Migration complete: \(spacesData.count) spaces, \(projectsData.count) projects, \(tagsData.count) tags")
+        },
+        didMigrate: nil
+    )
+
     static var stages: [MigrationStage] {
-        [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5]
+        [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5, migrateV5toV6]
     }
 }

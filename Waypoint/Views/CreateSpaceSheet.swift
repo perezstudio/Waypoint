@@ -11,6 +11,7 @@ import SwiftData
 struct CreateSpaceSheet: View {
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
+	@Environment(ProjectStore.self) private var projectStore
 
 	@State private var name: String = ""
 	@State private var description: String = ""
@@ -123,14 +124,25 @@ struct CreateSpaceSheet: View {
 	}
 
 	private func createSpace() {
+		// Find the max sort value to add the new space at the end
+		let descriptor = FetchDescriptor<Space>(
+			sortBy: [SortDescriptor(\.sort, order: .reverse)]
+		)
+		let existingSpaces = (try? modelContext.fetch(descriptor)) ?? []
+		let maxSort = existingSpaces.first?.sort ?? -1
+
 		let newSpace = Space(
 			name: name.trimmingCharacters(in: .whitespacesAndNewlines),
 			spaceDescription: description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? nil : description.trimmingCharacters(in: .whitespacesAndNewlines),
 			icon: selectedIcon,
-			color: selectedColor.hexString
+			color: selectedColor.hexString,
+			sort: maxSort + 1
 		)
 
 		modelContext.insert(newSpace)
+
+		// Set the new space as the current space
+		projectStore.currentSpace = newSpace
 
 		dismiss()
 	}
