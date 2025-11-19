@@ -11,9 +11,9 @@ import SwiftData
 @main
 struct WaypointApp: App {
     var sharedModelContainer: ModelContainer = {
-        // TEMPORARY: Delete the database to test fresh user flows
-        // Uncomment the code below to reset the database on app launch
-        /*
+        // RESET DATABASE FOR NEW V1 SCHEMA
+        // This deletes the old database to start fresh with the new V1 baseline
+        // Remove this code after first successful run if you want to preserve data
         let fileManager = FileManager.default
         let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
 
@@ -23,15 +23,23 @@ struct WaypointApp: App {
             let fileURL = appSupportURL.appendingPathComponent(filename)
             if fileManager.fileExists(atPath: fileURL.path) {
                 try? fileManager.removeItem(at: fileURL)
-                print("🗑️ TEMPORARY: Deleted \(filename)")
+                print("🗑️ Reset database: Deleted \(filename) for fresh V1 schema")
             }
         }
-        */
 
         do {
             // Use migration plan to handle schema changes
+            // V1 uses the current models - when creating V2, current models move there
             return try ModelContainer(
-                for: Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self,
+                for: Project.self,
+                Issue.self,
+                ContentBlock.self,
+                Tag.self,
+                Space.self,
+                Resource.self,
+                ProjectUpdate.self,
+                Milestone.self,
+                ProjectIssuesViewSettings.self,
                 migrationPlan: WaypointMigrationPlan.self
             )
         } catch {

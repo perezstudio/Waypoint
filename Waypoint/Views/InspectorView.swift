@@ -11,6 +11,11 @@ import SwiftData
 struct InspectorView: View {
 	@Binding var isVisible: Bool
 	@Environment(ProjectStore.self) private var projectStore
+	@FocusState private var focusedField: FocusedField?
+
+	enum FocusedField {
+		case title
+	}
 
 	private var priorityColor: Color {
 		guard let issue = projectStore.selectedIssue else { return .gray }
@@ -85,8 +90,19 @@ struct InspectorView: View {
 								.foregroundStyle(.secondary)
 								.textCase(.uppercase)
 
-							Text(issue.title)
-								.font(.headline)
+							InspectorTextField(
+								text: Binding(
+									get: { issue.title },
+									set: { newValue in
+										issue.title = newValue
+										issue.updatedAt = Date()
+									}
+								),
+								focused: $focusedField,
+								focusValue: .title,
+								placeholder: "Enter title...",
+								font: .headline
+							)
 						}
 
 						Divider()
@@ -113,20 +129,17 @@ struct InspectorView: View {
 						Divider()
 
 						// Description section
-						if let description = issue.issueDescription, !description.isEmpty {
-							VStack(alignment: .leading, spacing: 12) {
-								Text("Description")
-									.font(.caption)
-									.foregroundStyle(.secondary)
-									.textCase(.uppercase)
+						VStack(alignment: .leading, spacing: 12) {
+							Text("Description")
+								.font(.caption)
+								.foregroundStyle(.secondary)
+								.textCase(.uppercase)
 
-								Text(description)
-									.font(.subheadline)
-									.foregroundStyle(.primary)
-							}
-
-							Divider()
+							IssueEditorView(issue: issue)
+								.frame(maxWidth: .infinity, alignment: .topLeading)
 						}
+
+						Divider()
 
 						// Timestamps section
 						VStack(alignment: .leading, spacing: 12) {
@@ -144,6 +157,10 @@ struct InspectorView: View {
 						Spacer()
 					}
 					.padding(16)
+					.contentShape(Rectangle())
+					.onTapGesture {
+						focusedField = nil
+					}
 				}
 			} else {
 				// Empty state when no issue is selected

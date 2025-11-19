@@ -56,8 +56,9 @@ final class ContentBlock {
     var updatedAt: Date
 
     var project: Project?
+    var issue: Issue?
 
-    init(type: BlockType = .paragraph, content: String = "", order: Int = 0, indentLevel: Int = 0, project: Project? = nil) {
+    init(type: BlockType = .paragraph, content: String = "", order: Int = 0, indentLevel: Int = 0, project: Project? = nil, issue: Issue? = nil) {
         self.id = UUID()
         self.type = type
         self.content = content
@@ -66,5 +67,6 @@ final class ContentBlock {
         self.createdAt = Date()
         self.updatedAt = Date()
         self.project = project
+        self.issue = issue
     }
 }

@@ -36,6 +36,9 @@ final class Issue {
     var project: Project?
     var tags: [Tag] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \ContentBlock.issue)
+    var contentBlocks: [ContentBlock] = []
+
     init(title: String, status: Status = .todo, priority: IssuePriority = .medium, project: Project? = nil) {
         self.id = UUID()
         self.title = title
