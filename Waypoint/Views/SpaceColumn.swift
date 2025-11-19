@@ -15,6 +15,7 @@ struct SpaceColumn: View {
 	@Query private var projects: [Project]
 	@Query private var tags: [Tag]
 	@Query private var spaces: [Space]
+	@Query private var allIssues: [Issue]
 
 	@State private var isHoveringTab = false
 	@State private var isHoveringClose = false
@@ -34,6 +35,36 @@ struct SpaceColumn: View {
 		return tags.filter { $0.space?.id == space.id }
 	}
 
+	// Badge count computations
+	private var inboxIssues: [Issue] {
+		allIssues.filter { $0.project == nil }
+	}
+
+	private var todayIssues: [Issue] {
+		let calendar = Calendar.current
+		let today = calendar.startOfDay(for: Date())
+		return allIssues.filter { issue in
+			guard let dueDate = issue.dueDate else { return false }
+			let dueDateStart = calendar.startOfDay(for: dueDate)
+			return dueDateStart <= today
+		}
+	}
+
+	private var upcomingIssues: [Issue] {
+		let calendar = Calendar.current
+		let today = calendar.startOfDay(for: Date())
+		let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
+		return allIssues.filter { issue in
+			guard let dueDate = issue.dueDate else { return false }
+			let dueDateStart = calendar.startOfDay(for: dueDate)
+			return dueDateStart >= tomorrow
+		}
+	}
+
+	private var completedIssues: [Issue] {
+		allIssues.filter { $0.status == .done }
+	}
+
 	var body: some View {
 		ScrollView(.vertical, showsIndicators: true) {
 			VStack(alignment: .leading, spacing: 20) {
@@ -42,7 +73,7 @@ struct SpaceColumn: View {
 					MenuItemView(
 						icon: "tray.fill",
 						label: "Inbox",
-						count: 12,
+						count: inboxIssues.count > 0 ? inboxIssues.count : nil,
 						isSelected: projectStore.selectedView == .system(.inbox),
 						iconColor: SystemView.inbox.color,
 						action: { projectStore.selectSystemView(.inbox) }
@@ -50,7 +81,7 @@ struct SpaceColumn: View {
 					MenuItemView(
 						icon: SystemView.today.icon,
 						label: "Today",
-						count: 5,
+						count: todayIssues.count > 0 ? todayIssues.count : nil,
 						isSelected: projectStore.selectedView == .system(.today),
 						iconColor: SystemView.today.color,
 						action: { projectStore.selectSystemView(.today) }
@@ -58,7 +89,7 @@ struct SpaceColumn: View {
 					MenuItemView(
 						icon: "calendar.badge.clock",
 						label: "Upcoming",
-						count: 8,
+						count: upcomingIssues.count > 0 ? upcomingIssues.count : nil,
 						isSelected: projectStore.selectedView == .system(.upcoming),
 						iconColor: SystemView.upcoming.color,
 						action: { projectStore.selectSystemView(.upcoming) }
@@ -66,6 +97,7 @@ struct SpaceColumn: View {
 					MenuItemView(
 						icon: "checkmark.circle.fill",
 						label: "Completed",
+						count: completedIssues.count > 0 ? completedIssues.count : nil,
 						isSelected: projectStore.selectedView == .system(.completed),
 						iconColor: SystemView.completed.color,
 						action: { projectStore.selectSystemView(.completed) }
