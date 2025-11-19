@@ -46,8 +46,18 @@ enum WaypointMigrationPlan: SchemaMigrationPlan {
 }
 
 /*
- MIGRATION BEST PRACTICES FOR FUTURE SCHEMA CHANGES
- ===================================================
+ ⚠️  IMPORTANT: SWIFTDATA MIGRATION GUIDE  ⚠️
+ =============================================
+
+ Before modifying ANY @Model class, read the complete migration guide:
+ 📄 .claude/swiftdata-migration-guide.md
+
+ Quick Summary:
+ - Latest schema uses CURRENT models (Project, Issue, etc.)
+ - Historical schemas use VERSIONED models (ProjectV1, IssueV1, etc.)
+ - When creating V2: freeze V1's models, then V2 uses current models
+
+ =============================================
 
  When you need to modify the data model, follow these steps:
 
