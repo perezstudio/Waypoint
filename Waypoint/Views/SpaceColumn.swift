@@ -24,8 +24,8 @@ struct SpaceColumn: View {
 
 	// Filtered projects for this space
 	private var spaceProjects: [Project] {
-		guard let space = space else { return projects }
-		return projects.filter { $0.space?.id == space.id }
+		guard let space = space else { return projects.filter { $0.favorite } }
+		return projects.filter { $0.space?.id == space.id && $0.favorite }
 	}
 
 	// Filtered tags for this space
@@ -233,6 +233,7 @@ struct SpaceColumn: View {
 									label: project.name,
 									count: project.issues.count,
 									isSelected: projectStore.selectedView == .project(project.id),
+									iconColor: AppColor.color(from: project.color),
 									action: { projectStore.selectProject(project) }
 								)
 							}

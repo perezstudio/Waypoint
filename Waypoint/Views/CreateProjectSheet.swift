@@ -20,6 +20,7 @@ struct CreateProjectSheet: View {
 	@State private var selectedIcon: String = "folder.fill"
 	@State private var selectedColor: AppColor = .blue
 	@State private var selectedSpace: Space?
+	@State private var isFavorite: Bool = false
 	@State private var highlightedIconIndex: Int = 0
 	@State private var highlightedColorIndex: Int = 0
 	@State private var showingSpacePicker: Bool = false
@@ -111,6 +112,10 @@ struct CreateProjectSheet: View {
 					}
 				}
 				.id(Field.spacePicker)
+
+					Section {
+						Toggle("Mark as Favorite", isOn: $isFavorite)
+					}
 				}
 				.formStyle(.grouped)
 				.onChange(of: focusedField) { _, newField in
@@ -363,6 +368,8 @@ struct CreateProjectSheet: View {
 		if !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
 			newProject.projectDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
 		}
+
+		newProject.favorite = isFavorite
 
 		modelContext.insert(newProject)
 

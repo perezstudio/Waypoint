@@ -358,7 +358,67 @@ enum SchemaV6: VersionedSchema {
     static var versionIdentifier = Schema.Version(6, 0, 0)
 
     static var models: [any PersistentModel.Type] {
+        [ProjectV6.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self]
+    }
+
+    @Model
+    final class ProjectV6 {
+        var id: UUID
+        var name: String
+        var icon: String
+        var color: String
+        var status: Status
+        var projectDescription: String?
+        var createdAt: Date
+        var updatedAt: Date
+
+        @Relationship(deleteRule: .cascade, inverse: \Issue.project)
+        var issues: [Issue] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Resource.project)
+        var resources: [Resource] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \ProjectUpdate.project)
+        var updates: [ProjectUpdate] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \Milestone.project)
+        var milestones: [Milestone] = []
+
+        @Relationship(deleteRule: .cascade, inverse: \ContentBlock.project)
+        var contentBlocks: [ContentBlock] = []
+
+        var space: Space?
+
+        init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: Space? = nil) {
+            self.id = UUID()
+            self.name = name
+            self.icon = icon
+            self.color = color
+            self.status = status
+            self.createdAt = Date()
+            self.updatedAt = Date()
+            self.space = space
+        }
+    }
+}
+
+// MARK: - Schema V7 (After adding favorite field to Project)
+
+enum SchemaV7: VersionedSchema {
+    static var versionIdentifier = Schema.Version(7, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
         [Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self]
+    }
+}
+
+// MARK: - Schema V8 (After adding ProjectIssuesViewSettings model)
+
+enum SchemaV8: VersionedSchema {
+    static var versionIdentifier = Schema.Version(8, 0, 0)
+
+    static var models: [any PersistentModel.Type] {
+        [Project.self, Issue.self, Item.self, Tag.self, Space.self, Resource.self, ProjectUpdate.self, Milestone.self, ContentBlock.self, ProjectIssuesViewSettings.self]
     }
 }
 
@@ -366,7 +426,7 @@ enum SchemaV6: VersionedSchema {
 
 enum WaypointMigrationPlan: SchemaMigrationPlan {
     static var schemas: [any VersionedSchema.Type] {
-        [SchemaV1.self, SchemaV2.self, SchemaV3.self, SchemaV4.self, SchemaV5.self, SchemaV6.self]
+        [SchemaV1.self, SchemaV2.self, SchemaV3.self, SchemaV4.self, SchemaV5.self, SchemaV6.self, SchemaV7.self, SchemaV8.self]
     }
 
     static let migrateV1toV2 = MigrationStage.lightweight(
@@ -616,7 +676,39 @@ enum WaypointMigrationPlan: SchemaMigrationPlan {
         didMigrate: nil
     )
 
+    // V6 -> V7: Add favorite field to Project
+    // SwiftData will automatically set favorite = false for all existing projects
+    static let migrateV6toV7 = MigrationStage.lightweight(
+        fromVersion: SchemaV6.self,
+        toVersion: SchemaV7.self
+    )
+
+    // V7 -> V8: Add ProjectIssuesViewSettings model
+    // Custom migration to create default settings for all existing projects
+    static let migrateV7toV8 = MigrationStage.custom(
+        fromVersion: SchemaV7.self,
+        toVersion: SchemaV8.self,
+        willMigrate: { context in
+            // Fetch all existing projects
+            let projectsDescriptor = FetchDescriptor<Project>()
+            let existingProjects = try context.fetch(projectsDescriptor)
+
+            print("📦 Migrating \(existingProjects.count) projects to V8 (adding view settings)")
+
+            // Create default settings for each existing project
+            for project in existingProjects {
+                let settings = ProjectIssuesViewSettings(project: project)
+                context.insert(settings)
+                print("  ✓ Created default view settings for project: \(project.name)")
+            }
+
+            try context.save()
+            print("✅ Migration to V8 complete")
+        },
+        didMigrate: nil
+    )
+
     static var stages: [MigrationStage] {
-        [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5, migrateV5toV6]
+        [migrateV1toV2, migrateV2toV3, migrateV3toV4, migrateV4toV5, migrateV5toV6, migrateV6toV7, migrateV7toV8]
     }
 }

@@ -66,6 +66,25 @@ struct ProjectPropertyRow: View {
     }
 }
 
+// MARK: - Project Property Toggle
+
+struct ProjectPropertyToggle: View {
+    let label: String
+    @Binding var isOn: Bool
+
+    var body: some View {
+        HStack {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            Spacer()
+            Toggle("", isOn: $isOn)
+                .labelsHidden()
+                .toggleStyle(.switch)
+        }
+    }
+}
+
 // MARK: - Resource Row
 
 struct ResourceRow: View {

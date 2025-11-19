@@ -18,6 +18,7 @@ final class Project {
     var projectDescription: String?
     var createdAt: Date
     var updatedAt: Date
+    var favorite: Bool = false
 
     @Relationship(deleteRule: .cascade, inverse: \Issue.project)
     var issues: [Issue] = []
@@ -34,6 +35,9 @@ final class Project {
     @Relationship(deleteRule: .cascade, inverse: \ContentBlock.project)
     var contentBlocks: [ContentBlock] = []
 
+    @Relationship(deleteRule: .cascade, inverse: \ProjectIssuesViewSettings.project)
+    var viewSettings: ProjectIssuesViewSettings?
+
     var space: Space?
 
     init(name: String, icon: String = "folder.fill", color: String = "#007AFF", status: Status = .inProgress, space: Space? = nil) {
@@ -44,6 +48,10 @@ final class Project {
         self.status = status
         self.createdAt = Date()
         self.updatedAt = Date()
+        self.favorite = false
         self.space = space
+
+        // Create default view settings for new projects
+        self.viewSettings = ProjectIssuesViewSettings(project: nil)
     }
 }
