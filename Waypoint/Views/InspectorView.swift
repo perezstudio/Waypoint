@@ -115,14 +115,66 @@ struct InspectorView: View {
 								.textCase(.uppercase)
 
 							VStack(alignment: .leading, spacing: 8) {
-								PropertyRow(label: "Status", value: statusText)
-								PropertyRow(label: "Priority", value: priorityText, valueColor: priorityColor)
-								if let dueDate = issue.dueDate {
-									PropertyRow(label: "Due Date", value: dueDate.formatted(date: .long, time: .omitted))
-								}
-								if let project = issue.project {
-									PropertyRow(label: "Project", value: project.name)
-								}
+								// Status selector
+								PropertySelector(
+									icon: "checkmark.circle.fill",
+									label: "Status",
+									value: statusText,
+									options: [
+										PropertyOption(label: "To Do", icon: "circle", value: Status.todo),
+										PropertyOption(label: "In Progress", icon: "arrow.triangle.2.circlepath", value: Status.inProgress),
+										PropertyOption(label: "Review", icon: "eye.circle", value: Status.review),
+										PropertyOption(label: "Done", icon: "checkmark.circle.fill", value: Status.done)
+									],
+									selectedValue: issue.status,
+									onSelect: { newValue in
+										if let status = newValue as? Status {
+											issue.status = status
+											issue.updatedAt = Date()
+										}
+									}
+								)
+
+								// Priority selector
+								PropertySelector(
+									icon: "exclamationmark.triangle.fill",
+									label: "Priority",
+									value: priorityText,
+									valueColor: priorityColor,
+									options: [
+										PropertyOption(label: "Low", icon: "chevron.down", color: .gray, value: IssuePriority.low),
+										PropertyOption(label: "Medium", icon: "minus", color: .blue, value: IssuePriority.medium),
+										PropertyOption(label: "High", icon: "chevron.up", color: .orange, value: IssuePriority.high),
+										PropertyOption(label: "Urgent", icon: "exclamationmark.2", color: .red, value: IssuePriority.urgent)
+									],
+									selectedValue: issue.priority,
+									onSelect: { newValue in
+										if let priority = newValue as? IssuePriority {
+											issue.priority = priority
+											issue.updatedAt = Date()
+										}
+									}
+								)
+								// Due date selector
+								DatePropertySelector(
+									icon: "calendar",
+									label: "Due Date",
+									date: issue.dueDate,
+									onSelect: { newDate in
+										issue.dueDate = newDate
+										issue.updatedAt = Date()
+									}
+								)
+								// Project selector
+								ProjectPropertySelector(
+									icon: "folder.fill",
+									label: "Project",
+									project: issue.project,
+									onSelect: { newProject in
+										issue.project = newProject
+										issue.updatedAt = Date()
+									}
+								)
 							}
 						}
 
@@ -183,6 +235,7 @@ struct InspectorView: View {
 			}
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.background(Color(nsColor: .windowBackgroundColor))
 	}
 }
 

@@ -474,6 +474,7 @@ struct DetailView: View {
 			}
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
+		.background(Color(nsColor: .windowBackgroundColor))
 		.clipped()
 	}
 
@@ -647,7 +648,6 @@ struct ProjectOverviewView: View {
 			}
 		}
 		.padding(20)
-		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 12))
 	}
 
@@ -670,7 +670,6 @@ struct ProjectOverviewView: View {
 			}
 		}
 		.padding(20)
-		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 12))
 	}
 
@@ -719,7 +718,6 @@ struct ProjectOverviewView: View {
 			}
 		}
 		.padding(20)
-		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 12))
 	}
 
@@ -733,7 +731,6 @@ struct ProjectOverviewView: View {
 			}
 		}
 		.padding(20)
-		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 12))
 	}
 
@@ -758,7 +755,6 @@ struct ProjectOverviewView: View {
 			}
 		}
 		.padding(20)
-		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 12))
 	}
 
@@ -792,7 +788,6 @@ struct StatCard: View {
 				.foregroundStyle(.secondary)
 		}
 		.padding()
-		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 8))
 	}
 }
@@ -1146,7 +1141,6 @@ struct UpdateItem: View {
 			}
 		}
 		.padding(12)
-		.background(.bar)
 		.clipShape(RoundedRectangle(cornerRadius: 8))
 	}
 }

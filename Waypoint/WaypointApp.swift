@@ -11,9 +11,10 @@ import SwiftData
 @main
 struct WaypointApp: App {
     var sharedModelContainer: ModelContainer = {
-        // RESET DATABASE FOR NEW V1 SCHEMA
-        // This deletes the old database to start fresh with the new V1 baseline
-        // Remove this code after first successful run if you want to preserve data
+        // ⚠️ DATABASE RESET CODE - COMMENTED OUT TO PREVENT DATA LOSS
+        // Uncomment this section ONLY if you need to completely reset the database
+        // WARNING: This will delete ALL user data!
+        /*
         let fileManager = FileManager.default
         let appSupportURL = fileManager.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
 
@@ -26,6 +27,7 @@ struct WaypointApp: App {
                 print("🗑️ Reset database: Deleted \(filename) for fresh V1 schema")
             }
         }
+        */
 
         do {
             // Use migration plan to handle schema changes
