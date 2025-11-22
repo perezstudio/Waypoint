@@ -52,8 +52,11 @@ struct CreateProjectSheet: View {
 
 	var body: some View {
 		NavigationStack {
-			ScrollViewReader { proxy in
-				Form {
+			VStack(spacing: 0) {
+				ModalHeader(title: "Create Project")
+
+				ScrollViewReader { proxy in
+					Form {
 					Section("Name") {
 						ZStack(alignment: .topLeading) {
 							TextEditor(text: $name)
@@ -118,22 +121,13 @@ struct CreateProjectSheet: View {
 					}
 				}
 			}
-			.navigationTitle("New Project")
-			.toolbar {
-				ToolbarItem(placement: .cancellationAction) {
-					Button("Cancel") {
-						dismiss()
-					}
-					.keyboardShortcut(.cancelAction)
-				}
 
-				ToolbarItem(placement: .confirmationAction) {
-					Button("Create") {
-						createProject()
-					}
-					.keyboardShortcut(.defaultAction)
-					.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSpace == nil)
-				}
+			ModalFooter(
+				cancelAction: { dismiss() },
+				primaryAction: { createProject() },
+				primaryLabel: "Create",
+				isPrimaryDisabled: name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSpace == nil
+			)
 			}
 			.onAppear {
 				focusedField = .name
@@ -507,6 +501,54 @@ struct SpacePickerPopover: View {
 			}
 			return .ignored
 		}
+	}
+}
+
+// MARK: - Reusable Modal Components
+
+struct ModalHeader: View {
+	let title: String
+
+	var body: some View {
+		Text(title)
+			.font(.title)
+			.fontWeight(.bold)
+			.frame(maxWidth: .infinity, alignment: .leading)
+			.padding(.horizontal)
+			.padding(.vertical, 24)
+	}
+}
+
+struct ModalFooter: View {
+	let cancelAction: () -> Void
+	let primaryAction: () -> Void
+	let primaryLabel: String
+	var isPrimaryDisabled: Bool = false
+
+	var body: some View {
+		HStack(spacing: 12) {
+			Spacer()
+
+			KeyboardShortcutButton(
+				label: "Cancel",
+				action: cancelAction,
+				shortcutKey: "esc",
+				style: .primary,
+				accentColor: .gray
+			)
+			.keyboardShortcut(.cancelAction)
+
+			KeyboardShortcutButton(
+				label: primaryLabel,
+				action: primaryAction,
+				shortcutKey: "↵",
+				style: .primary,
+				accentColor: .blue
+			)
+			.keyboardShortcut(.defaultAction)
+			.disabled(isPrimaryDisabled)
+		}
+		.padding()
 	}
 }
 
