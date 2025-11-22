@@ -154,8 +154,17 @@ struct DetailView: View {
 		// Project issues view settings
 		if case .project = projectStore.selectedView,
 		   projectStore.selectedViewType == .issues,
-		   let project = projectStore.selectedProject,
-		   let projectSettings = project.viewSettings {
+		   let project = projectStore.selectedProject {
+			// Ensure project has view settings (lazy initialization)
+			if project.viewSettings == nil {
+				project.viewSettings = ProjectIssuesViewSettings(project: project)
+				try? modelContext.save()
+			}
+
+			guard let projectSettings = project.viewSettings else {
+				return nil
+			}
+
 			return Binding(
 				get: {
 					ViewSettings(
@@ -844,7 +853,7 @@ struct ProjectIssuesView: View {
 	@Environment(\.modelContext) private var modelContext
 	@Query private var allIssues: [Issue]
 	@State private var showingCreateIssue = false
-	@State private var createIssueWithStatus: Status?
+	@State private var createIssueDefaults: IssueDefaults?
 	@Binding var isInspectorVisible: Bool
 
 	private var projectIssues: [Issue] {
@@ -853,8 +862,17 @@ struct ProjectIssuesView: View {
 	}
 
 	private var settings: ViewSettings {
-		guard let project = projectStore.selectedProject,
-			  let projectSettings = project.viewSettings else {
+		guard let project = projectStore.selectedProject else {
+			return .defaults
+		}
+
+		// Ensure project has view settings (lazy initialization)
+		if project.viewSettings == nil {
+			project.viewSettings = ProjectIssuesViewSettings(project: project)
+			try? modelContext.save()
+		}
+
+		guard let projectSettings = project.viewSettings else {
 			return .defaults
 		}
 
@@ -883,9 +901,10 @@ struct ProjectIssuesView: View {
 				case .board:
 					GenericIssueBoardView(
 						groups: groupedIssues,
-						showAddButton: settings.groupBy == .status,
-						onAddIssue: { status in
-							createIssueWithStatus = status
+						grouping: settings.groupBy,
+						showAddButton: true,
+						onAddIssue: { defaults in
+							createIssueDefaults = defaults
 							showingCreateIssue = true
 						},
 						isInspectorVisible: $isInspectorVisible
@@ -894,9 +913,10 @@ struct ProjectIssuesView: View {
 					ScrollView {
 						GenericIssueListView(
 							groups: groupedIssues,
-							showAddButton: settings.groupBy == .status,
-							onAddIssue: { status in
-								createIssueWithStatus = status
+							grouping: settings.groupBy,
+							showAddButton: true,
+							onAddIssue: { defaults in
+								createIssueDefaults = defaults
 								showingCreateIssue = true
 							},
 							isInspectorVisible: $isInspectorVisible
@@ -906,8 +926,14 @@ struct ProjectIssuesView: View {
 			}
 		}
 		.sheet(isPresented: $showingCreateIssue) {
-			if let status = createIssueWithStatus {
-				CreateIssueSheet(defaultStatus: status, project: projectStore.selectedProject)
+			if let defaults = createIssueDefaults {
+				CreateIssueSheet(
+					defaultStatus: defaults.status ?? .todo,
+					defaultPriority: defaults.priority,
+					defaultDueDate: defaults.dueDate,
+					project: defaults.project ?? projectStore.selectedProject,
+					defaultTags: defaults.tags
+				)
 			} else {
 				CreateIssueSheet(project: projectStore.selectedProject)
 			}

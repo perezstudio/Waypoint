@@ -15,7 +15,10 @@ struct CreateIssueSheet: View {
 	@Query private var tags: [Tag]
 
 	let defaultStatus: Status
+	let defaultPriority: IssuePriority?
+	let defaultDueDate: Date?
 	let project: Project?
+	let defaultTags: Set<UUID>?
 
 	@State private var title: String = ""
 	@State private var description: String = ""
@@ -40,11 +43,28 @@ struct CreateIssueSheet: View {
 		case description
 	}
 
-	init(defaultStatus: Status = .todo, project: Project? = nil) {
+	init(
+		defaultStatus: Status = .todo,
+		defaultPriority: IssuePriority? = nil,
+		defaultDueDate: Date? = nil,
+		project: Project? = nil,
+		defaultTags: Set<UUID>? = nil
+	) {
 		self.defaultStatus = defaultStatus
+		self.defaultPriority = defaultPriority
+		self.defaultDueDate = defaultDueDate
 		self.project = project
+		self.defaultTags = defaultTags
+
 		_status = State(initialValue: defaultStatus)
+		_priority = State(initialValue: defaultPriority ?? .medium)
 		_selectedProject = State(initialValue: project)
+		_selectedTags = State(initialValue: defaultTags ?? [])
+
+		if let dueDate = defaultDueDate {
+			_dueDate = State(initialValue: dueDate)
+			_hasDueDate = State(initialValue: true)
+		}
 	}
 
 	var body: some View {

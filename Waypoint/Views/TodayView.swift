@@ -11,7 +11,7 @@ struct TodayView: View {
     @Environment(ProjectStore.self) private var projectStore
     @Query private var allIssues: [Issue]
     @State private var showingCreateIssue = false
-    @State private var createIssueWithStatus: Status?
+    @State private var createIssueDefaults: IssueDefaults?
     @Binding var isInspectorVisible: Bool
 
     private var settings: ViewSettings {
@@ -46,9 +46,10 @@ struct TodayView: View {
                 case .board:
                     GenericIssueBoardView(
                         groups: groupedIssues,
-                        showAddButton: settings.groupBy == .status,
-                        onAddIssue: { status in
-                            createIssueWithStatus = status
+                        grouping: settings.groupBy,
+                        showAddButton: true,
+                        onAddIssue: { defaults in
+                            createIssueDefaults = defaults
                             showingCreateIssue = true
                         },
                         isInspectorVisible: $isInspectorVisible
@@ -57,9 +58,10 @@ struct TodayView: View {
                     ScrollView {
                         GenericIssueListView(
                             groups: groupedIssues,
-                            showAddButton: settings.groupBy == .status,
-                            onAddIssue: { status in
-                                createIssueWithStatus = status
+                            grouping: settings.groupBy,
+                            showAddButton: true,
+                            onAddIssue: { defaults in
+                                createIssueDefaults = defaults
                                 showingCreateIssue = true
                             },
                             isInspectorVisible: $isInspectorVisible
@@ -69,8 +71,14 @@ struct TodayView: View {
             }
         }
         .sheet(isPresented: $showingCreateIssue) {
-            if let status = createIssueWithStatus {
-                CreateIssueSheet(defaultStatus: status, project: nil)
+            if let defaults = createIssueDefaults {
+                CreateIssueSheet(
+                    defaultStatus: defaults.status ?? .todo,
+                    defaultPriority: defaults.priority,
+                    defaultDueDate: defaults.dueDate,
+                    project: defaults.project,
+                    defaultTags: defaults.tags
+                )
             } else {
                 CreateIssueSheet(project: nil)
             }

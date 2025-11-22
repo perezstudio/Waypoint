@@ -4,19 +4,34 @@
 //
 
 import SwiftUI
+import SwiftData
+
+// MARK: - Issue Defaults
+
+struct IssueDefaults {
+	var status: Status?
+	var priority: IssuePriority?
+	var project: Project?
+	var dueDate: Date?
+	var tags: Set<UUID>?
+}
 
 // MARK: - Generic Board View
 
 struct GenericIssueBoardView: View {
     let groups: [IssueGroup]
+    let grouping: IssueGrouping
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
+    let onAddIssue: ((IssueDefaults) -> Void)?
     @Binding var isInspectorVisible: Bool
     @FocusState private var focusedElement: FocusableElement?
     @Environment(ProjectStore.self) private var projectStore
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var dragManager = DragDropManager()
 
-    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((Status?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
+    init(groups: [IssueGroup], grouping: IssueGrouping, showAddButton: Bool = true, onAddIssue: ((IssueDefaults) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
         self.groups = groups
+        self.grouping = grouping
         self.showAddButton = showAddButton
         self.onAddIssue = onAddIssue
         self._isInspectorVisible = isInspectorVisible
@@ -32,7 +47,7 @@ struct GenericIssueBoardView: View {
                 column.append(.issue(issue.id))
             }
             // Add the add button if applicable
-            if showAddButton && statusForGroup(group) != nil {
+            if showAddButton && shouldShowAddButton(for: group, grouping: grouping) {
                 column.append(.addButton(group.id))
             }
             grid.append(column)
@@ -124,9 +139,9 @@ struct GenericIssueBoardView: View {
             }
         case .addButton(let groupId):
             // Trigger add issue for this group
-            if let group = groups.first(where: { $0.id == groupId }),
-               let status = statusForGroup(group) {
-                onAddIssue?(status)
+            if let group = groups.first(where: { $0.id == groupId }) {
+                let defaults = defaultsForGroup(group, grouping: grouping, modelContext: modelContext)
+                onAddIssue?(defaults)
             }
         case .project:
             // Projects not applicable in issue views
@@ -140,14 +155,20 @@ struct GenericIssueBoardView: View {
                 ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
                     GenericIssueColumn(
                         group: group,
+                        grouping: grouping,
                         showAddButton: showAddButton,
                         onAddIssue: onAddIssue,
                         isInspectorVisible: $isInspectorVisible,
                         focusedElement: $focusedElement
                     )
+                    .environmentObject(dragManager)
                 }
             }
             .padding(20)
+        }
+        .onAppear {
+            // Clean up drag state when view appears
+            dragManager.endDrag()
         }
         .onKeyPress(.upArrow) {
             moveUp()
@@ -180,14 +201,18 @@ struct GenericIssueBoardView: View {
 
 struct GenericIssueListView: View {
     let groups: [IssueGroup]
+    let grouping: IssueGrouping
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
+    let onAddIssue: ((IssueDefaults) -> Void)?
     @Binding var isInspectorVisible: Bool
     @FocusState private var focusedElement: FocusableElement?
     @Environment(ProjectStore.self) private var projectStore
+    @Environment(\.modelContext) private var modelContext
+    @StateObject private var dragManager = DragDropManager()
 
-    init(groups: [IssueGroup], showAddButton: Bool = true, onAddIssue: ((Status?) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
+    init(groups: [IssueGroup], grouping: IssueGrouping, showAddButton: Bool = true, onAddIssue: ((IssueDefaults) -> Void)? = nil, isInspectorVisible: Binding<Bool>) {
         self.groups = groups
+        self.grouping = grouping
         self.showAddButton = showAddButton
         self.onAddIssue = onAddIssue
         self._isInspectorVisible = isInspectorVisible
@@ -202,7 +227,7 @@ struct GenericIssueListView: View {
                 elements.append(.issue(issue.id))
             }
             // Add the add button for this group if applicable
-            if showAddButton && statusForGroup(group) != nil {
+            if showAddButton && shouldShowAddButton(for: group, grouping: grouping) {
                 elements.append(.addButton(group.id))
             }
         }
@@ -248,9 +273,9 @@ struct GenericIssueListView: View {
             }
         case .addButton(let groupId):
             // Trigger add issue for this group
-            if let group = groups.first(where: { $0.id == groupId }),
-               let status = statusForGroup(group) {
-                onAddIssue?(status)
+            if let group = groups.first(where: { $0.id == groupId }) {
+                let defaults = defaultsForGroup(group, grouping: grouping, modelContext: modelContext)
+                onAddIssue?(defaults)
             }
         case .project:
             // Projects not applicable in issue views
@@ -263,14 +288,20 @@ struct GenericIssueListView: View {
             ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
                 GenericIssueSection(
                     group: group,
+                    grouping: grouping,
                     showAddButton: showAddButton,
                     onAddIssue: onAddIssue,
                     isInspectorVisible: $isInspectorVisible,
                     focusedElement: $focusedElement
                 )
+                .environmentObject(dragManager)
             }
         }
         .padding(20)
+        .onAppear {
+            // Clean up drag state when view appears
+            dragManager.endDrag()
+        }
         .onKeyPress(.upArrow) {
             moveUp()
             return .handled
@@ -294,10 +325,14 @@ struct GenericIssueListView: View {
 
 struct GenericIssueColumn: View {
     let group: IssueGroup
+    let grouping: IssueGrouping
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
+    let onAddIssue: ((IssueDefaults) -> Void)?
     @Binding var isInspectorVisible: Bool
     @FocusState.Binding var focusedElement: FocusableElement?
+
+    @EnvironmentObject var dragManager: DragDropManager
+    @Environment(\.modelContext) private var modelContext
 
     private var color: Color {
         colorForGroup(group)
@@ -308,6 +343,39 @@ struct GenericIssueColumn: View {
             return id == group.id
         }
         return false
+    }
+
+    private func handleDrop(_ dragData: IssueDragData, at position: DropPosition) -> Bool {
+        // Find the dragged issue
+        guard let issue = group.issues.first(where: { $0.id == dragData.issueId }) ??
+                          findIssueInAllGroups(dragData.issueId) else {
+            return false
+        }
+
+        // Update issue properties if moving to different group
+        if dragData.sourceGroupId != group.id {
+            updateIssueForGroup(
+                issue: issue,
+                targetGroupId: group.id,
+                grouping: grouping,
+                modelContext: modelContext
+            )
+        }
+
+        // End drag state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            dragManager.endDrag()
+        }
+
+        return true
+    }
+
+    private func findIssueInAllGroups(_ issueId: UUID) -> Issue? {
+        // Search through model context for the issue
+        let descriptor = FetchDescriptor<Issue>(
+            predicate: #Predicate { $0.id == issueId }
+        )
+        return try? modelContext.fetch(descriptor).first
     }
 
     var body: some View {
@@ -336,17 +404,51 @@ struct GenericIssueColumn: View {
             // Issue cards
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(group.issues) { issue in
-                        IssueCard(
-                            issue: issue,
-                            isInspectorVisible: $isInspectorVisible,
-                            focusedElement: $focusedElement
+                    if group.issues.isEmpty {
+                        // Show empty drop zone when dragging
+                        if dragManager.isDragging {
+                            EmptyGroupDropZone(group: group, onDrop: handleDrop)
+                                .transition(.opacity.combined(with: .scale))
+                        } else {
+                            Text("No issues")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                    } else {
+                        ForEach(group.issues) { issue in
+                            // Drop zone before each card
+                            IssueDropZone(
+                                groupId: group.id,
+                                position: .before(issue.id),
+                                onDrop: handleDrop
+                            )
+
+                            // Draggable card
+                            DraggableIssueCard(
+                                issue: issue,
+                                groupId: group.id,
+                                grouping: grouping,
+                                isInspectorVisible: $isInspectorVisible,
+                                focusedElement: $focusedElement
+                            )
+                        }
+
+                        // Drop zone at end
+                        IssueDropZone(
+                            groupId: group.id,
+                            position: .end,
+                            onDrop: handleDrop
                         )
                     }
 
-                    // Add issue button (only for status-based grouping)
-                    if showAddButton, let status = statusForGroup(group) {
-                        Button(action: { onAddIssue?(status) }) {
+                    // Add issue button (for all applicable groupings)
+                    if showAddButton, shouldShowAddButton(for: group, grouping: grouping) {
+                        Button(action: {
+                            let defaults = defaultsForGroup(group, grouping: grouping, modelContext: modelContext)
+                            onAddIssue?(defaults)
+                        }) {
                             HStack {
                                 Image(systemName: "plus.circle")
                                     .foregroundStyle(.secondary)
@@ -371,14 +473,6 @@ struct GenericIssueColumn: View {
                             focusedElement = .addButton(group.id)
                         }
                     }
-
-                    if group.issues.isEmpty {
-                        Text("No issues")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
                 }
             }
         }
@@ -390,10 +484,14 @@ struct GenericIssueColumn: View {
 
 struct GenericIssueSection: View {
     let group: IssueGroup
+    let grouping: IssueGrouping
     let showAddButton: Bool
-    let onAddIssue: ((Status?) -> Void)?
+    let onAddIssue: ((IssueDefaults) -> Void)?
     @Binding var isInspectorVisible: Bool
     @FocusState.Binding var focusedElement: FocusableElement?
+
+    @EnvironmentObject var dragManager: DragDropManager
+    @Environment(\.modelContext) private var modelContext
 
     private var color: Color {
         colorForGroup(group)
@@ -404,6 +502,39 @@ struct GenericIssueSection: View {
             return id == group.id
         }
         return false
+    }
+
+    private func handleDrop(_ dragData: IssueDragData, at position: DropPosition) -> Bool {
+        // Find the dragged issue
+        guard let issue = group.issues.first(where: { $0.id == dragData.issueId }) ??
+                          findIssueInAllGroups(dragData.issueId) else {
+            return false
+        }
+
+        // Update issue properties if moving to different group
+        if dragData.sourceGroupId != group.id {
+            updateIssueForGroup(
+                issue: issue,
+                targetGroupId: group.id,
+                grouping: grouping,
+                modelContext: modelContext
+            )
+        }
+
+        // End drag state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            dragManager.endDrag()
+        }
+
+        return true
+    }
+
+    private func findIssueInAllGroups(_ issueId: UUID) -> Issue? {
+        // Search through model context for the issue
+        let descriptor = FetchDescriptor<Issue>(
+            predicate: #Predicate { $0.id == issueId }
+        )
+        return try? modelContext.fetch(descriptor).first
     }
 
     var body: some View {
@@ -430,9 +561,12 @@ struct GenericIssueSection: View {
 
                 Spacer()
 
-                // Add button (only for status-based grouping)
-                if showAddButton, let status = statusForGroup(group) {
-                    Button(action: { onAddIssue?(status) }) {
+                // Add button (for all applicable groupings)
+                if showAddButton, shouldShowAddButton(for: group, grouping: grouping) {
+                    Button(action: {
+                        let defaults = defaultsForGroup(group, grouping: grouping, modelContext: modelContext)
+                        onAddIssue?(defaults)
+                    }) {
                         Image(systemName: "plus.circle.fill")
                             .foregroundStyle(color)
                     }
@@ -454,22 +588,45 @@ struct GenericIssueSection: View {
 
             // Issue cards
             VStack(spacing: 8) {
-                ForEach(group.issues) { issue in
-                    IssueCard(
-                        issue: issue,
-                        isInspectorVisible: $isInspectorVisible,
-                        focusedElement: $focusedElement
-                    )
-                }
-
                 if group.issues.isEmpty {
-                    Text("No issues")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                        .background(.bar.opacity(0.5))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    // Show empty drop zone when dragging
+                    if dragManager.isDragging {
+                        EmptyGroupDropZone(group: group, onDrop: handleDrop)
+                            .transition(.opacity.combined(with: .scale))
+                    } else {
+                        Text("No issues")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 24)
+                            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                } else {
+                    ForEach(group.issues) { issue in
+                        // Drop zone before each card
+                        IssueDropZone(
+                            groupId: group.id,
+                            position: .before(issue.id),
+                            onDrop: handleDrop
+                        )
+
+                        // Draggable card
+                        DraggableIssueCard(
+                            issue: issue,
+                            groupId: group.id,
+                            grouping: grouping,
+                            isInspectorVisible: $isInspectorVisible,
+                            focusedElement: $focusedElement
+                        )
+                    }
+
+                    // Drop zone at end
+                    IssueDropZone(
+                        groupId: group.id,
+                        position: .end,
+                        onDrop: handleDrop
+                    )
                 }
             }
         }
@@ -504,5 +661,104 @@ private func statusForGroup(_ group: IssueGroup) -> Status? {
     case "review": return .review
     case "done": return .done
     default: return nil
+    }
+}
+
+private func priorityForGroup(_ group: IssueGroup) -> IssuePriority? {
+    // Only return priority if this is a priority-based group
+    switch group.id {
+    case "low": return .low
+    case "medium": return .medium
+    case "high": return .high
+    case "urgent": return .urgent
+    default: return nil
+    }
+}
+
+private func projectIdForGroup(_ group: IssueGroup) -> UUID? {
+    // Return project UUID from group ID (excludes "no-project")
+    if group.id == "no-project" {
+        return nil // Explicitly no project
+    }
+    return UUID(uuidString: group.id)
+}
+
+private func dueDateForGroup(_ group: IssueGroup) -> Date? {
+    // Return due date based on group ID
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
+
+    switch group.id {
+    case "overdue":
+        // Set to yesterday for overdue
+        return calendar.date(byAdding: .day, value: -1, to: today)
+    case "today":
+        return today
+    case "tomorrow":
+        return calendar.date(byAdding: .day, value: 1, to: today)
+    case "this-week":
+        // Set to 3 days from now (middle of the week)
+        return calendar.date(byAdding: .day, value: 3, to: today)
+    case "later":
+        // Set to 2 weeks from now
+        return calendar.date(byAdding: .day, value: 14, to: today)
+    default:
+        return nil
+    }
+}
+
+private func tagIdForGroup(_ group: IssueGroup) -> UUID? {
+    // Return tag UUID from group ID (excludes "no-tags")
+    if group.id == "no-tags" {
+        return nil
+    }
+    return UUID(uuidString: group.id)
+}
+
+private func defaultsForGroup(_ group: IssueGroup, grouping: IssueGrouping, modelContext: ModelContext) -> IssueDefaults {
+    var defaults = IssueDefaults()
+
+    switch grouping {
+    case .status:
+        defaults.status = statusForGroup(group)
+    case .priority:
+        defaults.priority = priorityForGroup(group)
+    case .project:
+        if let projectId = projectIdForGroup(group) {
+            // Fetch the project from model context
+            let descriptor = FetchDescriptor<Project>(
+                predicate: #Predicate { $0.id == projectId }
+            )
+            defaults.project = try? modelContext.fetch(descriptor).first
+        }
+    case .dueDate:
+        defaults.dueDate = dueDateForGroup(group)
+    case .tags:
+        if let tagId = tagIdForGroup(group) {
+            defaults.tags = [tagId]
+        }
+    case .none:
+        break
+    }
+
+    return defaults
+}
+
+private func shouldShowAddButton(for group: IssueGroup, grouping: IssueGrouping) -> Bool {
+    // Determine if this group can provide meaningful defaults for new issues
+    switch grouping {
+    case .status:
+        return statusForGroup(group) != nil
+    case .priority:
+        return priorityForGroup(group) != nil
+    case .project:
+        // Show for all project groups (including "no-project")
+        return true
+    case .dueDate:
+        return dueDateForGroup(group) != nil
+    case .tags:
+        return tagIdForGroup(group) != nil
+    case .none:
+        return false
     }
 }
