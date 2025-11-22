@@ -16,7 +16,6 @@ struct CreateProjectSheet: View {
 	let preselectedSpace: Space?
 
 	@State private var name: String = ""
-	@State private var description: String = ""
 	@State private var selectedIcon: String = "folder.fill"
 	@State private var selectedColor: AppColor = .blue
 	@State private var selectedSpace: Space?
@@ -28,7 +27,6 @@ struct CreateProjectSheet: View {
 
 	enum Field: Hashable {
 		case name
-		case description
 		case iconGrid
 		case colorGrid
 		case spacePicker
@@ -56,23 +54,17 @@ struct CreateProjectSheet: View {
 		NavigationStack {
 			ScrollViewReader { proxy in
 				Form {
-					Section {
-						TextField("Project Name", text: $name, axis: .vertical)
-							.textFieldStyle(.plain)
-							.font(.title3)
-							.fontWeight(.semibold)
-							.focused($focusedField, equals: .name)
-							.lineLimit(2)
+					Section("Name") {
+						ZStack(alignment: .topLeading) {
+							TextEditor(text: $name)
+								.font(.title3)
+								.fontWeight(.semibold)
+								.focused($focusedField, equals: .name)
+								.scrollContentBackground(.hidden)
+								.frame(minHeight: 40, maxHeight: 80)
+						}
 					}
 					.id(Field.name)
-
-					Section("Description") {
-						TextField("Add a description...", text: $description, axis: .vertical)
-							.textFieldStyle(.plain)
-							.focused($focusedField, equals: .description)
-							.lineLimit(3...6)
-					}
-					.id(Field.description)
 
 					iconGridSection
 						.id(Field.iconGrid)
@@ -155,7 +147,7 @@ struct CreateProjectSheet: View {
 				return .handled
 			}
 		}
-		.frame(width: 500, height: 650)
+		.frame(width: 500, height: 550)
 	}
 
 	// Grid navigation helpers - Linear navigation
@@ -332,7 +324,7 @@ struct CreateProjectSheet: View {
 	}
 
 	private func handleTab(isShift: Bool) {
-		let fields: [Field] = [.name, .description, .iconGrid, .colorGrid, .spacePicker]
+		let fields: [Field] = [.name, .iconGrid, .colorGrid, .spacePicker]
 		guard let currentField = focusedField,
 			  let currentIndex = fields.firstIndex(of: currentField) else {
 			focusedField = fields.first
@@ -364,10 +356,6 @@ struct CreateProjectSheet: View {
 			color: selectedColor.hexString,
 			space: selectedSpace
 		)
-
-		if !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-			newProject.projectDescription = description.trimmingCharacters(in: .whitespacesAndNewlines)
-		}
 
 		newProject.favorite = isFavorite
 
