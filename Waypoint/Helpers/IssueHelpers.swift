@@ -46,7 +46,7 @@ struct IssueGrouper {
         var groups: [IssueGroup] = []
 
         for (index, status) in statusOrder.enumerated() {
-            let statusIssues = issues.filter { $0.status == status }
+            let statusIssues = issues.filter { $0.status == status }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
             let title: String = {
                 switch status {
                 case .todo: return "To Do"
@@ -71,7 +71,7 @@ struct IssueGrouper {
         var groups: [IssueGroup] = []
 
         for (index, priority) in priorityOrder.enumerated() {
-            let priorityIssues = issues.filter { $0.priority == priority }
+            let priorityIssues = issues.filter { $0.priority == priority }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
             let title: String = {
                 switch priority {
                 case .urgent: return "Urgent"
@@ -104,7 +104,7 @@ struct IssueGrouper {
             groups.append(IssueGroup(
                 id: "no-project",
                 title: "No Project",
-                issues: noProjectIssues,
+                issues: noProjectIssues.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                 order: order
             ))
             order += 1
@@ -118,7 +118,7 @@ struct IssueGrouper {
                 return IssueGroup(
                     id: key,
                     title: projectName,
-                    issues: issues,
+                    issues: issues.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                     order: 0 // Will be reassigned
                 )
             }
@@ -175,27 +175,27 @@ struct IssueGrouper {
         var order = 0
 
         if !overdue.isEmpty {
-            groups.append(IssueGroup(id: "overdue", title: "Overdue", issues: overdue, order: order))
+            groups.append(IssueGroup(id: "overdue", title: "Overdue", issues: overdue.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }, order: order))
             order += 1
         }
         if !todayIssues.isEmpty {
-            groups.append(IssueGroup(id: "today", title: "Today", issues: todayIssues, order: order))
+            groups.append(IssueGroup(id: "today", title: "Today", issues: todayIssues.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }, order: order))
             order += 1
         }
         if !tomorrowIssues.isEmpty {
-            groups.append(IssueGroup(id: "tomorrow", title: "Tomorrow", issues: tomorrowIssues, order: order))
+            groups.append(IssueGroup(id: "tomorrow", title: "Tomorrow", issues: tomorrowIssues.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }, order: order))
             order += 1
         }
         if !thisWeek.isEmpty {
-            groups.append(IssueGroup(id: "this-week", title: "This Week", issues: thisWeek, order: order))
+            groups.append(IssueGroup(id: "this-week", title: "This Week", issues: thisWeek.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }, order: order))
             order += 1
         }
         if !later.isEmpty {
-            groups.append(IssueGroup(id: "later", title: "Later", issues: later, order: order))
+            groups.append(IssueGroup(id: "later", title: "Later", issues: later.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }, order: order))
             order += 1
         }
         if !noDueDate.isEmpty {
-            groups.append(IssueGroup(id: "no-due-date", title: "No Due Date", issues: noDueDate, order: order))
+            groups.append(IssueGroup(id: "no-due-date", title: "No Due Date", issues: noDueDate.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }, order: order))
         }
 
         return groups
@@ -231,7 +231,7 @@ struct IssueGrouper {
                 groups.append(IssueGroup(
                     id: tagId,
                     title: tagName,
-                    issues: tagIssues,
+                    issues: tagIssues.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                     order: order
                 ))
                 order += 1
@@ -243,7 +243,7 @@ struct IssueGrouper {
             groups.append(IssueGroup(
                 id: "no-tags",
                 title: "No Tags",
-                issues: noTagsIssues,
+                issues: noTagsIssues.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                 order: order
             ))
         }

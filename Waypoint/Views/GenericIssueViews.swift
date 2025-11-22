@@ -362,12 +362,55 @@ struct GenericIssueColumn: View {
             )
         }
 
+        // Update sortOrder based on drop position
+        let newSortOrder = calculateSortOrder(for: position, in: group, excluding: issue)
+        issue.sortOrder = newSortOrder
+        issue.updatedAt = Date()
+
+        try? modelContext.save()
+
         // End drag state
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             dragManager.endDrag()
         }
 
         return true
+    }
+
+    private func calculateSortOrder(for position: DropPosition, in group: IssueGroup, excluding issue: Issue) -> Double {
+        // Get all issues in this group except the one being dragged
+        let otherIssues = group.issues.filter { $0.id != issue.id }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
+
+        switch position {
+        case .before(let beforeIssueId):
+            // Find the issue we're inserting before
+            guard let beforeIssue = group.issues.first(where: { $0.id == beforeIssueId }) else {
+                return Date().timeIntervalSince1970
+            }
+
+            // Find the issue before this one (if any)
+            if let beforeIndex = otherIssues.firstIndex(where: { $0.id == beforeIssueId }),
+               beforeIndex > 0 {
+                let previousIssue = otherIssues[beforeIndex - 1]
+                // Insert between previous and before
+                return (previousIssue.effectiveSortOrder + beforeIssue.effectiveSortOrder) / 2.0
+            } else {
+                // Insert before the first issue
+                return beforeIssue.effectiveSortOrder - 1.0
+            }
+
+        case .end:
+            // Insert at the end
+            if let lastIssue = otherIssues.last {
+                return lastIssue.effectiveSortOrder + 1.0
+            } else {
+                return Date().timeIntervalSince1970
+            }
+
+        case .empty:
+            // First item in empty group
+            return Date().timeIntervalSince1970
+        }
     }
 
     private func findIssueInAllGroups(_ issueId: UUID) -> Issue? {
@@ -469,6 +512,7 @@ struct GenericIssueColumn: View {
                         .buttonStyle(.plain)
                         .focusable()
                         .focused($focusedElement, equals: .addButton(group.id))
+                        .focusEffectDisabled()
                         .onTapGesture {
                             focusedElement = .addButton(group.id)
                         }
@@ -521,12 +565,55 @@ struct GenericIssueSection: View {
             )
         }
 
+        // Update sortOrder based on drop position
+        let newSortOrder = calculateSortOrder(for: position, in: group, excluding: issue)
+        issue.sortOrder = newSortOrder
+        issue.updatedAt = Date()
+
+        try? modelContext.save()
+
         // End drag state
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
             dragManager.endDrag()
         }
 
         return true
+    }
+
+    private func calculateSortOrder(for position: DropPosition, in group: IssueGroup, excluding issue: Issue) -> Double {
+        // Get all issues in this group except the one being dragged
+        let otherIssues = group.issues.filter { $0.id != issue.id }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
+
+        switch position {
+        case .before(let beforeIssueId):
+            // Find the issue we're inserting before
+            guard let beforeIssue = group.issues.first(where: { $0.id == beforeIssueId }) else {
+                return Date().timeIntervalSince1970
+            }
+
+            // Find the issue before this one (if any)
+            if let beforeIndex = otherIssues.firstIndex(where: { $0.id == beforeIssueId }),
+               beforeIndex > 0 {
+                let previousIssue = otherIssues[beforeIndex - 1]
+                // Insert between previous and before
+                return (previousIssue.effectiveSortOrder + beforeIssue.effectiveSortOrder) / 2.0
+            } else {
+                // Insert before the first issue
+                return beforeIssue.effectiveSortOrder - 1.0
+            }
+
+        case .end:
+            // Insert at the end
+            if let lastIssue = otherIssues.last {
+                return lastIssue.effectiveSortOrder + 1.0
+            } else {
+                return Date().timeIntervalSince1970
+            }
+
+        case .empty:
+            // First item in empty group
+            return Date().timeIntervalSince1970
+        }
     }
 
     private func findIssueInAllGroups(_ issueId: UUID) -> Issue? {
@@ -580,6 +667,7 @@ struct GenericIssueSection: View {
                     )
                     .focusable()
                     .focused($focusedElement, equals: .addButton(group.id))
+                    .focusEffectDisabled()
                     .onTapGesture {
                         focusedElement = .addButton(group.id)
                     }

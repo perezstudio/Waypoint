@@ -32,6 +32,7 @@ final class Issue {
     var createdAt: Date
     var updatedAt: Date
     var dueDate: Date?
+    var sortOrder: Double?
 
     var project: Project?
     var tags: [Tag] = []
@@ -47,5 +48,11 @@ final class Issue {
         self.createdAt = Date()
         self.updatedAt = Date()
         self.project = project
+        self.sortOrder = Date().timeIntervalSince1970
+    }
+
+    // Computed property to get sortOrder with fallback to createdAt
+    var effectiveSortOrder: Double {
+        sortOrder ?? createdAt.timeIntervalSince1970
     }
 }

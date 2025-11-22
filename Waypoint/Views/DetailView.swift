@@ -1049,6 +1049,7 @@ struct IssueCard: View {
 		)
 		.focusable()
 		.focused($focusedElement, equals: .issue(issue.id))
+		.focusEffectDisabled()
 		.onTapGesture {
 			projectStore.selectedIssue = issue
 			isInspectorVisible = true
