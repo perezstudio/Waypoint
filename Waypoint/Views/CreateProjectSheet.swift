@@ -27,9 +27,10 @@ struct CreateProjectSheet: View {
 
 	enum Field: Hashable {
 		case name
+		case spacePicker
+		case favorite
 		case iconGrid
 		case colorGrid
-		case spacePicker
 	}
 
 	init(preselectedSpace: Space? = nil) {
@@ -69,54 +70,71 @@ struct CreateProjectSheet: View {
 					}
 					.id(Field.name)
 
+					// Organizational Settings Section
+					Section("Space") {
+						if spaces.isEmpty {
+							Text("No spaces available. Create a space first.")
+								.font(.caption)
+								.foregroundStyle(.secondary)
+						} else {
+							CustomSpacePickerButton(
+								selectedSpace: $selectedSpace,
+								spaces: spaces,
+								isFocused: focusedField == .spacePicker,
+								showingPopover: $showingSpacePicker
+							)
+							.focusable()
+							.focused($focusedField, equals: .spacePicker)
+							.focusEffectDisabled()
+							.onKeyPress(.return) {
+								if focusedField == .spacePicker {
+									showingSpacePicker.toggle()
+									return .handled
+								}
+								return .ignored
+							}
+							.onKeyPress(.space) {
+								if focusedField == .spacePicker {
+									showingSpacePicker.toggle()
+									return .handled
+								}
+								return .ignored
+							}
+						}
+					}
+					.id(Field.spacePicker)
+
+					Section {
+						FavoriteToggleRow(isFavorite: $isFavorite, isFocused: focusedField == .favorite)
+							.focusable()
+							.focused($focusedField, equals: .favorite)
+							.focusEffectDisabled()
+							.id(Field.favorite)
+							.onKeyPress(.space) {
+								guard focusedField == .favorite else { return .ignored }
+								isFavorite.toggle()
+								return .handled
+							}
+							.onKeyPress(.return) {
+								guard focusedField == .favorite else { return .ignored }
+								isFavorite.toggle()
+								return .handled
+							}
+					}
+
 					iconGridSection
 						.id(Field.iconGrid)
 
-					colorGridSection
+					colorScrollSection
 						.id(Field.colorGrid)
-
-					Section("Space") {
-					if spaces.isEmpty {
-						Text("No spaces available. Create a space first.")
-							.font(.caption)
-							.foregroundStyle(.secondary)
-					} else {
-						CustomSpacePickerButton(
-							selectedSpace: $selectedSpace,
-							spaces: spaces,
-							isFocused: focusedField == .spacePicker,
-							showingPopover: $showingSpacePicker
-						)
-						.focusable()
-						.focused($focusedField, equals: .spacePicker)
-						.focusEffectDisabled()
-						.onKeyPress(.return) {
-							if focusedField == .spacePicker {
-								showingSpacePicker.toggle()
-								return .handled
-							}
-							return .ignored
-						}
-						.onKeyPress(.space) {
-							if focusedField == .spacePicker {
-								showingSpacePicker.toggle()
-								return .handled
-							}
-							return .ignored
-						}
-					}
-				}
-				.id(Field.spacePicker)
-
-					Section {
-						Toggle("Mark as Favorite", isOn: $isFavorite)
-					}
 				}
 				.formStyle(.grouped)
 				.onChange(of: focusedField) { _, newField in
 					if let field = newField {
-						withAnimation {
-							proxy.scrollTo(field, anchor: .center)
+						DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+							withAnimation {
+								proxy.scrollTo(field, anchor: .center)
+							}
 						}
 					}
 				}
@@ -140,185 +158,236 @@ struct CreateProjectSheet: View {
 				}
 				return .handled
 			}
+			.onKeyPress(keys: [.return]) { press in
+				if press.modifiers.contains(.command) {
+					// Command+Return to create project
+					if !(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || selectedSpace == nil) {
+						createProject()
+						return .handled
+					}
+				}
+				return .ignored
+			}
+			.onKeyPress(keys: [.escape]) { press in
+				dismiss()
+				return .handled
+			}
 		}
 		.frame(width: 500, height: 550)
 	}
 
-	// Grid navigation helpers - Linear navigation
-	private func navigateIconGrid(direction: GridDirection) {
-		let itemsPerRow = 6
-		let totalIcons = commonIcons.count
-
-		switch direction {
-		case .left:
-			// Previous item, wrap to end
-			highlightedIconIndex = highlightedIconIndex > 0 ? highlightedIconIndex - 1 : totalIcons - 1
-		case .right:
-			// Next item, wrap to start
-			highlightedIconIndex = highlightedIconIndex < totalIcons - 1 ? highlightedIconIndex + 1 : 0
-		case .up:
-			// Move up one row (6 items back), clamp at start
-			let newIndex = highlightedIconIndex - itemsPerRow
-			highlightedIconIndex = max(0, newIndex)
-		case .down:
-			// Move down one row (6 items forward), clamp at end
-			let newIndex = highlightedIconIndex + itemsPerRow
-			highlightedIconIndex = min(totalIcons - 1, newIndex)
-		}
-	}
-
-	private func navigateColorGrid(direction: GridDirection) {
-		let itemsPerRow = 6
-		let totalColors = presetColors.count
-
-		switch direction {
-		case .left:
-			// Previous item, wrap to end
-			highlightedColorIndex = highlightedColorIndex > 0 ? highlightedColorIndex - 1 : totalColors - 1
-		case .right:
-			// Next item, wrap to start
-			highlightedColorIndex = highlightedColorIndex < totalColors - 1 ? highlightedColorIndex + 1 : 0
-		case .up:
-			// Move up one row (6 items back), clamp at start
-			let newIndex = highlightedColorIndex - itemsPerRow
-			highlightedColorIndex = max(0, newIndex)
-		case .down:
-			// Move down one row (6 items forward), clamp at end
-			let newIndex = highlightedColorIndex + itemsPerRow
-			highlightedColorIndex = min(totalColors - 1, newIndex)
-		}
-	}
-
-	enum GridDirection {
-		case up, down, left, right
-	}
-
 	private var iconGridSection: some View {
 		Section("Icon") {
-			LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
-				ForEach(Array(commonIcons.enumerated()), id: \.offset) { index, icon in
-					Button(action: { selectedIcon = icon }) {
-						ZStack {
-							RoundedRectangle(cornerRadius: 8)
-								.fill(selectedIcon == icon ? Color.accentColor : Color.secondary.opacity(0.1))
-
-							Image(systemName: icon)
-								.font(.title3)
-								.foregroundStyle(selectedIcon == icon ? .white : .primary)
-
-							if highlightedIconIndex == index && focusedField == .iconGrid {
-								RoundedRectangle(cornerRadius: 8)
-									.strokeBorder(Color.accentColor, lineWidth: 3)
+			ScrollViewReader { iconProxy in
+				ScrollView(.horizontal, showsIndicators: false) {
+					VStack(spacing: 8) {
+						// First row (icons 0-11)
+						HStack(spacing: 8) {
+							ForEach(Array(commonIcons.prefix(12).enumerated()), id: \.offset) { index, icon in
+								iconButton(icon: icon, index: index)
 							}
 						}
-						.frame(width: 44, height: 44)
-						.scaleEffect(highlightedIconIndex == index && focusedField == .iconGrid ? 1.05 : 1.0)
+
+						// Second row (icons 12-23)
+						HStack(spacing: 8) {
+							ForEach(Array(commonIcons.suffix(from: 12).enumerated()), id: \.offset) { index, icon in
+								iconButton(icon: icon, index: index + 12)
+							}
+						}
 					}
-					.buttonStyle(.plain)
+					.padding(.vertical, 4)
 				}
-			}
-			.focusable()
-			.focused($focusedField, equals: .iconGrid)
-			.focusEffectDisabled()
-			.onKeyPress(.upArrow) {
-				focusedField == .iconGrid ? (navigateIconGrid(direction: .up), .handled).1 : .ignored
-			}
-			.onKeyPress(.downArrow) {
-				focusedField == .iconGrid ? (navigateIconGrid(direction: .down), .handled).1 : .ignored
-			}
-			.onKeyPress(.leftArrow) {
-				focusedField == .iconGrid ? (navigateIconGrid(direction: .left), .handled).1 : .ignored
-			}
-			.onKeyPress(.rightArrow) {
-				focusedField == .iconGrid ? (navigateIconGrid(direction: .right), .handled).1 : .ignored
-			}
-			.onKeyPress(.return) {
-				focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
-			}
-			.onKeyPress(.space) {
-				focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
-			}
-			.onKeyPress(characters: .decimalDigits) { press in
-				guard focusedField == .iconGrid else { return .ignored }
-				if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < commonIcons.count {
-					highlightedIconIndex = digit - 1
-					selectedIcon = commonIcons[digit - 1]
-					return .handled
-				} else if press.characters == "0" && commonIcons.count >= 10 {
-					highlightedIconIndex = 9
-					selectedIcon = commonIcons[9]
+				.focusable()
+				.focused($focusedField, equals: .iconGrid)
+				.focusEffectDisabled()
+				.onKeyPress(.upArrow) {
+					guard focusedField == .iconGrid else { return .ignored }
+					let iconsPerRow = 12
+					if highlightedIconIndex >= iconsPerRow {
+						highlightedIconIndex -= iconsPerRow
+						withAnimation {
+							iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
+						}
+					}
 					return .handled
 				}
-				return .ignored
+				.onKeyPress(.downArrow) {
+					guard focusedField == .iconGrid else { return .ignored }
+					let iconsPerRow = 12
+					if highlightedIconIndex < iconsPerRow {
+						highlightedIconIndex = min(highlightedIconIndex + iconsPerRow, commonIcons.count - 1)
+						withAnimation {
+							iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
+						}
+					}
+					return .handled
+				}
+				.onKeyPress(.leftArrow) {
+					guard focusedField == .iconGrid else { return .ignored }
+					highlightedIconIndex = highlightedIconIndex > 0 ? highlightedIconIndex - 1 : commonIcons.count - 1
+					withAnimation {
+						iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
+					}
+					return .handled
+				}
+				.onKeyPress(.rightArrow) {
+					guard focusedField == .iconGrid else { return .ignored }
+					highlightedIconIndex = highlightedIconIndex < commonIcons.count - 1 ? highlightedIconIndex + 1 : 0
+					withAnimation {
+						iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
+					}
+					return .handled
+				}
+				.onKeyPress(.return) {
+					focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
+				}
+				.onKeyPress(.space) {
+					focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
+				}
+				.onKeyPress(characters: .decimalDigits) { press in
+					guard focusedField == .iconGrid else { return .ignored }
+					if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < commonIcons.count {
+						highlightedIconIndex = digit - 1
+						selectedIcon = commonIcons[digit - 1]
+						withAnimation {
+							iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
+						}
+						return .handled
+					} else if press.characters == "0" && commonIcons.count >= 10 {
+						highlightedIconIndex = 9
+						selectedIcon = commonIcons[9]
+						withAnimation {
+							iconProxy.scrollTo(9, anchor: .center)
+						}
+						return .handled
+					}
+					return .ignored
+				}
+				.onChange(of: focusedField) { _, newField in
+					if newField == .iconGrid {
+						DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+							withAnimation {
+								iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
-	private var colorGridSection: some View {
+	private func iconButton(icon: String, index: Int) -> some View {
+		Button(action: { selectedIcon = icon }) {
+			ZStack {
+				RoundedRectangle(cornerRadius: 8)
+					.fill(selectedIcon == icon ? Color.accentColor : Color.secondary.opacity(0.1))
+
+				Image(systemName: icon)
+					.font(.title3)
+					.foregroundStyle(selectedIcon == icon ? .white : .primary)
+
+				if highlightedIconIndex == index && focusedField == .iconGrid {
+					RoundedRectangle(cornerRadius: 8)
+						.strokeBorder(Color.accentColor, lineWidth: 3)
+				}
+			}
+			.frame(width: 44, height: 44)
+			.scaleEffect(highlightedIconIndex == index && focusedField == .iconGrid ? 1.05 : 1.0)
+		}
+		.buttonStyle(.plain)
+		.id(index)
+	}
+
+	private var colorScrollSection: some View {
 		Section("Color") {
-			LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 8), count: 6), spacing: 8) {
-				ForEach(Array(presetColors.enumerated()), id: \.offset) { index, appColor in
-					Button(action: { selectedColor = appColor }) {
-						ZStack {
-							RoundedRectangle(cornerRadius: 8)
-								.fill(appColor.color)
+			ScrollViewReader { colorProxy in
+				ScrollView(.horizontal, showsIndicators: false) {
+					HStack(spacing: 8) {
+						ForEach(Array(presetColors.enumerated()), id: \.offset) { index, appColor in
+							Button(action: { selectedColor = appColor }) {
+								ZStack {
+									RoundedRectangle(cornerRadius: 8)
+										.fill(appColor.color)
 
-							if selectedColor == appColor {
-								RoundedRectangle(cornerRadius: 8)
-									.strokeBorder(Color.primary, lineWidth: 3)
+									if selectedColor == appColor {
+										RoundedRectangle(cornerRadius: 8)
+											.strokeBorder(Color.primary, lineWidth: 3)
+									}
+
+									if highlightedColorIndex == index && focusedField == .colorGrid {
+										RoundedRectangle(cornerRadius: 8)
+											.strokeBorder(Color.white, lineWidth: 2)
+											.padding(1)
+									}
+								}
+								.frame(width: 44, height: 44)
+								.scaleEffect(highlightedColorIndex == index && focusedField == .colorGrid ? 1.05 : 1.0)
 							}
-
-							if highlightedColorIndex == index && focusedField == .colorGrid {
-								RoundedRectangle(cornerRadius: 8)
-									.strokeBorder(Color.white, lineWidth: 2)
-									.padding(1)
+							.buttonStyle(.plain)
+							.id(index)
+						}
+					}
+					.padding(.vertical, 4)
+				}
+				.focusable()
+				.focused($focusedField, equals: .colorGrid)
+				.focusEffectDisabled()
+				.onKeyPress(.leftArrow) {
+					guard focusedField == .colorGrid else { return .ignored }
+					highlightedColorIndex = highlightedColorIndex > 0 ? highlightedColorIndex - 1 : presetColors.count - 1
+					withAnimation {
+						colorProxy.scrollTo(highlightedColorIndex, anchor: .center)
+					}
+					return .handled
+				}
+				.onKeyPress(.rightArrow) {
+					guard focusedField == .colorGrid else { return .ignored }
+					highlightedColorIndex = highlightedColorIndex < presetColors.count - 1 ? highlightedColorIndex + 1 : 0
+					withAnimation {
+						colorProxy.scrollTo(highlightedColorIndex, anchor: .center)
+					}
+					return .handled
+				}
+				.onKeyPress(.return) {
+					focusedField == .colorGrid ? (selectedColor = presetColors[highlightedColorIndex], .handled).1 : .ignored
+				}
+				.onKeyPress(.space) {
+					focusedField == .colorGrid ? (selectedColor = presetColors[highlightedColorIndex], .handled).1 : .ignored
+				}
+				.onKeyPress(characters: .decimalDigits) { press in
+					guard focusedField == .colorGrid else { return .ignored }
+					if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < presetColors.count {
+						highlightedColorIndex = digit - 1
+						selectedColor = presetColors[digit - 1]
+						withAnimation {
+							colorProxy.scrollTo(highlightedColorIndex, anchor: .center)
+						}
+						return .handled
+					} else if press.characters == "0" && presetColors.count >= 10 {
+						highlightedColorIndex = 9
+						selectedColor = presetColors[9]
+						withAnimation {
+							colorProxy.scrollTo(9, anchor: .center)
+						}
+						return .handled
+					}
+					return .ignored
+				}
+				.onChange(of: focusedField) { _, newField in
+					if newField == .colorGrid {
+						DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+							withAnimation {
+								colorProxy.scrollTo(highlightedColorIndex, anchor: .center)
 							}
 						}
-						.frame(width: 44, height: 44)
-						.scaleEffect(highlightedColorIndex == index && focusedField == .colorGrid ? 1.05 : 1.0)
 					}
-					.buttonStyle(.plain)
 				}
-			}
-			.focusable()
-			.focused($focusedField, equals: .colorGrid)
-			.focusEffectDisabled()
-			.onKeyPress(.upArrow) {
-				focusedField == .colorGrid ? (navigateColorGrid(direction: .up), .handled).1 : .ignored
-			}
-			.onKeyPress(.downArrow) {
-				focusedField == .colorGrid ? (navigateColorGrid(direction: .down), .handled).1 : .ignored
-			}
-			.onKeyPress(.leftArrow) {
-				focusedField == .colorGrid ? (navigateColorGrid(direction: .left), .handled).1 : .ignored
-			}
-			.onKeyPress(.rightArrow) {
-				focusedField == .colorGrid ? (navigateColorGrid(direction: .right), .handled).1 : .ignored
-			}
-			.onKeyPress(.return) {
-				focusedField == .colorGrid ? (selectedColor = presetColors[highlightedColorIndex], .handled).1 : .ignored
-			}
-			.onKeyPress(.space) {
-				focusedField == .colorGrid ? (selectedColor = presetColors[highlightedColorIndex], .handled).1 : .ignored
-			}
-			.onKeyPress(characters: .decimalDigits) { press in
-				guard focusedField == .colorGrid else { return .ignored }
-				if let digit = Int(press.characters), digit >= 1 && digit <= 9, digit - 1 < presetColors.count {
-					highlightedColorIndex = digit - 1
-					selectedColor = presetColors[digit - 1]
-					return .handled
-				} else if press.characters == "0" && presetColors.count >= 10 {
-					highlightedColorIndex = 9
-					selectedColor = presetColors[9]
-					return .handled
-				}
-				return .ignored
 			}
 		}
 	}
 
 	private func handleTab(isShift: Bool) {
-		let fields: [Field] = [.name, .iconGrid, .colorGrid, .spacePicker]
+		let fields: [Field] = [.name, .spacePicker, .favorite, .iconGrid, .colorGrid]
 		guard let currentField = focusedField,
 			  let currentIndex = fields.firstIndex(of: currentField) else {
 			focusedField = fields.first
@@ -356,6 +425,24 @@ struct CreateProjectSheet: View {
 		modelContext.insert(newProject)
 
 		dismiss()
+	}
+}
+
+// Custom Favorite Toggle Row
+struct FavoriteToggleRow: View {
+	@Binding var isFavorite: Bool
+	let isFocused: Bool
+
+	var body: some View {
+		HStack(spacing: 12) {
+			Toggle("Mark as Favorite", isOn: $isFavorite)
+			Spacer()
+		}
+		.contentShape(Rectangle())
+		.overlay(
+			RoundedRectangle(cornerRadius: 6)
+				.strokeBorder(isFocused ? Color.accentColor : Color.clear, lineWidth: 2)
+		)
 	}
 }
 
@@ -514,7 +601,7 @@ struct ModalHeader: View {
 			.font(.title)
 			.fontWeight(.bold)
 			.frame(maxWidth: .infinity, alignment: .leading)
-			.padding(.horizontal)
+			.padding(.horizontal, 20)
 			.padding(.vertical, 24)
 	}
 }
