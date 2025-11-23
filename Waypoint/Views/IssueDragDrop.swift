@@ -277,8 +277,15 @@ func updateIssueForGroup(
 		// For now, skip auto-update for tags
 		break
 
-	case .dueDate, .none:
-		// These don't have property mappings
+	case .dueDate:
+		// Update due date based on target group
+		if let dueDate = dueDateFromGroupId(targetGroupId) {
+			issue.dueDate = dueDate
+			issue.updatedAt = Date()
+		}
+
+	case .none:
+		// No property mappings
 		break
 	}
 
@@ -302,5 +309,34 @@ private func priorityFromGroupId(_ groupId: String) -> IssuePriority? {
 	case "high": return .high
 	case "urgent": return .urgent
 	default: return nil
+	}
+}
+
+private func dueDateFromGroupId(_ groupId: String) -> Date? {
+	let calendar = Calendar.current
+	let today = calendar.startOfDay(for: Date())
+
+	// Check if this is a week-based day group (format: "week-day-ISO8601")
+	if groupId.hasPrefix("week-day-") {
+		let dateString = String(groupId.dropFirst("week-day-".count))
+		let iso8601Formatter = ISO8601DateFormatter()
+		iso8601Formatter.timeZone = calendar.timeZone
+		return iso8601Formatter.date(from: dateString)
+	}
+
+	// Handle standard due date groups
+	switch groupId {
+	case "overdue":
+		return calendar.date(byAdding: .day, value: -1, to: today)
+	case "today":
+		return today
+	case "tomorrow":
+		return calendar.date(byAdding: .day, value: 1, to: today)
+	case "this-week":
+		return calendar.date(byAdding: .day, value: 3, to: today)
+	case "later":
+		return calendar.date(byAdding: .day, value: 14, to: today)
+	default:
+		return nil
 	}
 }

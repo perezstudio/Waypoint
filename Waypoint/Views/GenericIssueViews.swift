@@ -776,6 +776,14 @@ private func dueDateForGroup(_ group: IssueGroup) -> Date? {
     let calendar = Calendar.current
     let today = calendar.startOfDay(for: Date())
 
+    // Check if this is a week-based day group (format: "week-day-ISO8601")
+    if group.id.hasPrefix("week-day-") {
+        let dateString = String(group.id.dropFirst("week-day-".count))
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.timeZone = calendar.timeZone
+        return iso8601Formatter.date(from: dateString)
+    }
+
     switch group.id {
     case "overdue":
         // Set to yesterday for overdue

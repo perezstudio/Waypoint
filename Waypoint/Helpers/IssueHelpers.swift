@@ -254,6 +254,8 @@ struct IssueGrouper {
     static func groupByWeekDays(_ issues: [Issue], weekStart: Date, weekEnd: Date) -> [IssueGroup] {
         let calendar = Calendar.current
         var groups: [IssueGroup] = []
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.timeZone = calendar.timeZone
 
         // Create groups for each day of the week (7 days)
         for dayOffset in 0..<7 {
@@ -277,7 +279,8 @@ struct IssueGrouper {
             let dayNumber = dateFormatter.string(from: dayDate)
 
             let title = "\(dayName) \(dayNumber)"
-            let id = calendar.component(.weekday, from: dayDate).description
+            // Use ISO8601 date string as ID so we can parse it back for drag-drop
+            let id = "week-day-" + iso8601Formatter.string(from: dayStart)
 
             groups.append(IssueGroup(
                 id: id,

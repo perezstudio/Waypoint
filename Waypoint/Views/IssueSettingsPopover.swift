@@ -9,6 +9,7 @@ import SwiftUI
 
 struct IssueSettingsPopover: View {
 	@Binding var settings: ViewSettings
+	var hideGroupBy: Bool = false
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 20) {
@@ -27,26 +28,28 @@ struct IssueSettingsPopover: View {
 				.labelsHidden()
 			}
 
-			Divider()
+			if !hideGroupBy {
+				Divider()
 
-			// Group By section
-			VStack(alignment: .leading, spacing: 8) {
-				Text("Group By")
-					.font(.headline)
-					.foregroundStyle(.primary)
+				// Group By section
+				VStack(alignment: .leading, spacing: 8) {
+					Text("Group By")
+						.font(.headline)
+						.foregroundStyle(.primary)
 
-				Picker("", selection: $settings.groupBy) {
-					ForEach(IssueGrouping.allCases, id: \.self) { grouping in
-						Label(grouping.rawValue, systemImage: grouping.icon)
-							.tag(grouping)
+					Picker("", selection: $settings.groupBy) {
+						ForEach(IssueGrouping.allCases, id: \.self) { grouping in
+							Label(grouping.rawValue, systemImage: grouping.icon)
+								.tag(grouping)
+						}
 					}
+					.pickerStyle(.menu)
+					.labelsHidden()
+					.frame(maxWidth: .infinity, alignment: .leading)
 				}
-				.pickerStyle(.menu)
-				.labelsHidden()
-				.frame(maxWidth: .infinity, alignment: .leading)
-			}
 
-			Divider()
+				Divider()
+			}
 
 			// Sort By section
 			VStack(alignment: .leading, spacing: 8) {

@@ -355,7 +355,11 @@ struct DetailView: View {
 							tooltip: "View Settings"
 						)
 						.popover(isPresented: $showingSettingsPopover) {
-							IssueSettingsPopover(settings: binding)
+							if case .system(let systemView) = projectStore.selectedView, systemView == .upcoming {
+								IssueSettingsPopover(settings: binding, hideGroupBy: true)
+							} else {
+								IssueSettingsPopover(settings: binding)
+							}
 						}
 					}
 
