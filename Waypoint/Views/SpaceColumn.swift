@@ -50,28 +50,13 @@ struct SpaceColumn: View {
 		}
 	}
 
-	private var upcomingIssues: [Issue] {
-		let calendar = Calendar.current
-		let today = calendar.startOfDay(for: Date())
-		let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
-		return allIssues.filter { issue in
-			guard let dueDate = issue.dueDate else { return false }
-			let dueDateStart = calendar.startOfDay(for: dueDate)
-			return dueDateStart >= tomorrow
-		}
-	}
-
-	private var completedIssues: [Issue] {
-		allIssues.filter { $0.status == .done }
-	}
-
 	var body: some View {
 		ScrollView(.vertical, showsIndicators: true) {
 			VStack(alignment: .leading, spacing: 20) {
 				// Global Views Section (at top of every space)
 				VStack(alignment: .leading, spacing: 4) {
 					MenuItemView(
-						icon: "tray.fill",
+						icon: inboxIssues.isEmpty ? "tray.fill" : "tray.full.fill",
 						label: "Inbox",
 						count: inboxIssues.count > 0 ? inboxIssues.count : nil,
 						isSelected: projectStore.selectedView == .system(.inbox),
@@ -89,7 +74,6 @@ struct SpaceColumn: View {
 					MenuItemView(
 						icon: "calendar.badge.clock",
 						label: "Upcoming",
-						count: upcomingIssues.count > 0 ? upcomingIssues.count : nil,
 						isSelected: projectStore.selectedView == .system(.upcoming),
 						iconColor: SystemView.upcoming.color,
 						action: { projectStore.selectSystemView(.upcoming) }
@@ -97,7 +81,6 @@ struct SpaceColumn: View {
 					MenuItemView(
 						icon: "checkmark.circle.fill",
 						label: "Completed",
-						count: completedIssues.count > 0 ? completedIssues.count : nil,
 						isSelected: projectStore.selectedView == .system(.completed),
 						iconColor: SystemView.completed.color,
 						action: { projectStore.selectSystemView(.completed) }
@@ -228,6 +211,7 @@ struct SpaceColumn: View {
 							label: "All Projects",
 							count: spaceProjects.count,
 							isSelected: projectStore.selectedView == .system(.projects),
+							iconColor: SystemView.projects.color,
 							action: { projectStore.selectSystemView(.projects) }
 						)
 

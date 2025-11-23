@@ -14,6 +14,7 @@ struct DetailView: View {
 	@Environment(ProjectStore.self) private var projectStore
 	@Environment(ViewSettingsStore.self) private var viewSettingsStore
 	@Environment(\.modelContext) private var modelContext
+	@Query private var allIssues: [Issue]
 
 	@State private var showingSettingsPopover = false
 	@State private var weekOffset: Int = 0
@@ -22,6 +23,11 @@ struct DetailView: View {
 	private var viewIcon: String {
 		switch projectStore.selectedView {
 		case .system(let systemView):
+			// Dynamic icon for inbox based on whether it has issues
+			if systemView == .inbox {
+				let inboxIssues = allIssues.filter { $0.project == nil }
+				return inboxIssues.isEmpty ? "tray.fill" : "tray.full.fill"
+			}
 			return systemView.icon
 		case .project:
 			return projectStore.selectedProject?.icon ?? "folder.fill"

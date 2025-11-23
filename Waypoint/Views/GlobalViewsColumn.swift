@@ -11,6 +11,11 @@ import SwiftData
 struct GlobalViewsColumn: View {
 	@Environment(ProjectStore.self) private var projectStore
 	@Query private var projects: [Project]
+	@Query private var allIssues: [Issue]
+
+	private var inboxIssues: [Issue] {
+		allIssues.filter { $0.project == nil }
+	}
 
 	var body: some View {
 		VStack(alignment: .leading, spacing: 20) {
@@ -25,7 +30,7 @@ struct GlobalViewsColumn: View {
 			// System Views Section
 			VStack(alignment: .leading, spacing: 4) {
 				MenuItemView(
-					icon: "tray.fill",
+					icon: inboxIssues.isEmpty ? "tray.fill" : "tray.full.fill",
 					label: "Inbox",
 					count: 12,
 					isSelected: projectStore.selectedView == .system(.inbox),
