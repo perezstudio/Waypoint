@@ -250,6 +250,45 @@ struct IssueGrouper {
 
         return groups
     }
+
+    static func groupByWeekDays(_ issues: [Issue], weekStart: Date, weekEnd: Date) -> [IssueGroup] {
+        let calendar = Calendar.current
+        var groups: [IssueGroup] = []
+
+        // Create groups for each day of the week (7 days)
+        for dayOffset in 0..<7 {
+            guard let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) else { continue }
+            let dayStart = calendar.startOfDay(for: dayDate)
+
+            // Filter issues for this specific day
+            let dayIssues = issues.filter { issue in
+                guard let dueDate = issue.dueDate else { return false }
+                let dueDateStart = calendar.startOfDay(for: dueDate)
+                return dueDateStart == dayStart
+            }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
+
+            // Format the day name and date
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "EEE" // Mon, Tue, etc.
+            let dayName = dayFormatter.string(from: dayDate)
+
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "d" // Day number
+            let dayNumber = dateFormatter.string(from: dayDate)
+
+            let title = "\(dayName) \(dayNumber)"
+            let id = calendar.component(.weekday, from: dayDate).description
+
+            groups.append(IssueGroup(
+                id: id,
+                title: title,
+                issues: dayIssues,
+                order: dayOffset
+            ))
+        }
+
+        return groups
+    }
 }
 
 // MARK: - IssueSorter

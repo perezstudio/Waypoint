@@ -16,6 +16,7 @@ struct DetailView: View {
 	@Environment(\.modelContext) private var modelContext
 
 	@State private var showingSettingsPopover = false
+	@State private var weekOffset: Int = 0
 
 	// Helper computed properties for view info
 	private var viewIcon: String {
@@ -71,6 +72,27 @@ struct DetailView: View {
 			// Show for project issues view
 			return projectStore.selectedViewType == .issues
 		}
+	}
+
+	private var weekRangeText: String {
+		let calendar = Calendar.current
+		let today = Date()
+
+		guard let weekInterval = calendar.dateInterval(of: .weekOfYear, for: today),
+			  let offsetWeekStart = calendar.date(byAdding: .weekOfYear, value: weekOffset, to: weekInterval.start),
+			  let weekEnd = calendar.date(byAdding: .day, value: 6, to: offsetWeekStart) else {
+			return "This Week"
+		}
+
+		if weekOffset == 0 {
+			return "This Week"
+		}
+
+		let formatter = DateFormatter()
+		formatter.dateFormat = "MMM d"
+		let startText = formatter.string(from: offsetWeekStart)
+		let endText = formatter.string(from: weekEnd)
+		return "\(startText) - \(endText)"
 	}
 
 	private var currentViewSettings: Binding<ViewSettings>? {
@@ -296,8 +318,35 @@ struct DetailView: View {
 				}
 				.frame(maxWidth: .infinity, alignment: .center)
 
-				// Right: Settings Button + Inspector Toggle
+				// Right: Week Navigation (for Upcoming) + Settings Button + Inspector Toggle
 				HStack(alignment: .center, spacing: 16) {
+					// Week navigation controls - only show for upcoming view
+					if case .system(let systemView) = projectStore.selectedView, systemView == .upcoming {
+						HStack(spacing: 16) {
+							// Week range text
+							Text(weekRangeText)
+								.font(.system(size: 13))
+								.foregroundStyle(.secondary)
+
+							// Back button
+							IconButton(
+								icon: "chevron.left",
+								action: { weekOffset -= 1 },
+								tooltip: "Previous week"
+							)
+
+							// Today button
+							TodayButton(weekOffset: $weekOffset)
+
+							// Next button
+							IconButton(
+								icon: "chevron.right",
+								action: { weekOffset += 1 },
+								tooltip: "Next week"
+							)
+						}
+					}
+
 					// Settings button - show for both project issues and system views
 					if shouldShowSettingsButton, let binding = settingsBinding {
 						IconButton(
@@ -497,8 +546,7 @@ struct DetailView: View {
 		case .today:
 			TodayView(isInspectorVisible: $isInspectorVisible)
 		case .upcoming:
-			Text("Upcoming Tasks")
-				.foregroundStyle(.secondary)
+			UpcomingView(weekOffset: $weekOffset, isInspectorVisible: $isInspectorVisible)
 		case .completed:
 			Text("Completed Tasks")
 				.foregroundStyle(.secondary)
@@ -517,6 +565,43 @@ struct DetailView: View {
 		case .updates:
 			ProjectUpdatesView()
 		}
+	}
+}
+
+// Today Button for Week Navigation
+struct TodayButton: View {
+	@Binding var weekOffset: Int
+	@State private var isHovering: Bool = false
+
+	var body: some View {
+		Button(action: { weekOffset = 0 }) {
+			Text("Today")
+				.font(.system(size: 13, weight: .medium))
+				.foregroundStyle(.secondary)
+				.padding(.horizontal, 8)
+				.padding(.vertical, 6)
+				.frame(height: 28)
+				.background {
+					if isHovering {
+						RoundedRectangle(cornerRadius: 6, style: .continuous)
+							.fill(.quaternary)
+					} else {
+						RoundedRectangle(cornerRadius: 6, style: .continuous)
+							.fill(Color.secondary.opacity(0.15))
+							.opacity(0)
+					}
+				}
+				.contentShape(Rectangle())
+		}
+		.buttonStyle(.plain)
+		.onHover { hovering in
+			withAnimation(.easeInOut(duration: 0.15)) {
+				isHovering = hovering
+			}
+		}
+		.disabled(weekOffset == 0)
+		.help("Go to current week")
+		.opacity(weekOffset == 0 ? 0.5 : 1.0)
 	}
 }
 
