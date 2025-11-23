@@ -559,8 +559,7 @@ struct DetailView: View {
 		case .upcoming:
 			UpcomingView(weekOffset: $weekOffset, isInspectorVisible: $isInspectorVisible)
 		case .completed:
-			Text("Completed Tasks")
-				.foregroundStyle(.secondary)
+			CompletedView(weekOffset: $weekOffset, isInspectorVisible: $isInspectorVisible)
 		case .projects:
 			ProjectsListView()
 		}

@@ -13,6 +13,7 @@ enum IssueGrouping: String, CaseIterable, Codable {
     case priority = "Priority"
     case project = "Project"
     case dueDate = "Due Date"
+    case completedDate = "Completed Date"
     case tags = "Tags"
     case none = "None"
 
@@ -22,6 +23,7 @@ enum IssueGrouping: String, CaseIterable, Codable {
         case .priority: return "exclamationmark.triangle"
         case .project: return "folder"
         case .dueDate: return "calendar"
+        case .completedDate: return "checkmark.circle.fill"
         case .tags: return "tag"
         case .none: return "list.bullet"
         }

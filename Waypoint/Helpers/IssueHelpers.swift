@@ -34,6 +34,8 @@ struct IssueGrouper {
             return groupByProject(issues)
         case .dueDate:
             return groupByDueDate(issues)
+        case .completedDate:
+            return groupByCompletedDate(issues)
         case .tags:
             return groupByTags(issues)
         case .none:
@@ -201,6 +203,72 @@ struct IssueGrouper {
         return groups
     }
 
+    private static func groupByCompletedDate(_ issues: [Issue]) -> [IssueGroup] {
+        let calendar = Calendar.current
+        let now = Date()
+        let today = calendar.startOfDay(for: now)
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let thisWeekStart = calendar.date(byAdding: .day, value: -6, to: today)! // 7 days including today
+        let lastWeekStart = calendar.date(byAdding: .day, value: -13, to: today)! // Previous 7 days
+
+        var todayIssues: [Issue] = []
+        var yesterdayIssues: [Issue] = []
+        var thisWeek: [Issue] = []
+        var lastWeek: [Issue] = []
+        var older: [Issue] = []
+        var noCompletedDate: [Issue] = []
+
+        for issue in issues {
+            guard let completedDate = issue.completedDate else {
+                noCompletedDate.append(issue)
+                continue
+            }
+
+            let completedDateStart = calendar.startOfDay(for: completedDate)
+
+            if completedDateStart == today {
+                todayIssues.append(issue)
+            } else if completedDateStart == calendar.startOfDay(for: yesterday) {
+                yesterdayIssues.append(issue)
+            } else if completedDateStart >= thisWeekStart && completedDateStart < yesterday {
+                thisWeek.append(issue)
+            } else if completedDateStart >= lastWeekStart && completedDateStart < thisWeekStart {
+                lastWeek.append(issue)
+            } else {
+                older.append(issue)
+            }
+        }
+
+        var groups: [IssueGroup] = []
+        var order = 0
+
+        if !todayIssues.isEmpty {
+            groups.append(IssueGroup(id: "today", title: "Today", issues: todayIssues.sorted { $0.effectiveSortOrder > $1.effectiveSortOrder }, order: order))
+            order += 1
+        }
+        if !yesterdayIssues.isEmpty {
+            groups.append(IssueGroup(id: "yesterday", title: "Yesterday", issues: yesterdayIssues.sorted { $0.effectiveSortOrder > $1.effectiveSortOrder }, order: order))
+            order += 1
+        }
+        if !thisWeek.isEmpty {
+            groups.append(IssueGroup(id: "this-week", title: "This Week", issues: thisWeek.sorted { ($0.completedDate ?? $0.createdAt) > ($1.completedDate ?? $1.createdAt) }, order: order))
+            order += 1
+        }
+        if !lastWeek.isEmpty {
+            groups.append(IssueGroup(id: "last-week", title: "Last Week", issues: lastWeek.sorted { ($0.completedDate ?? $0.createdAt) > ($1.completedDate ?? $1.createdAt) }, order: order))
+            order += 1
+        }
+        if !older.isEmpty {
+            groups.append(IssueGroup(id: "older", title: "Older", issues: older.sorted { ($0.completedDate ?? $0.createdAt) > ($1.completedDate ?? $1.createdAt) }, order: order))
+            order += 1
+        }
+        if !noCompletedDate.isEmpty {
+            groups.append(IssueGroup(id: "no-completed-date", title: "No Completed Date", issues: noCompletedDate.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }, order: order))
+        }
+
+        return groups
+    }
+
     private static func groupByTags(_ issues: [Issue]) -> [IssueGroup] {
         var tagGroups: [String: [Issue]] = [:]
         var noTagsIssues: [Issue] = []
@@ -281,6 +349,48 @@ struct IssueGrouper {
             let title = "\(dayName) \(dayNumber)"
             // Use ISO8601 date string as ID so we can parse it back for drag-drop
             let id = "week-day-" + iso8601Formatter.string(from: dayStart)
+
+            groups.append(IssueGroup(
+                id: id,
+                title: title,
+                issues: dayIssues,
+                order: dayOffset
+            ))
+        }
+
+        return groups
+    }
+
+    static func groupByCompletedWeekDays(_ issues: [Issue], weekStart: Date, weekEnd: Date) -> [IssueGroup] {
+        let calendar = Calendar.current
+        var groups: [IssueGroup] = []
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.timeZone = calendar.timeZone
+
+        // Create groups for each day of the week (7 days)
+        for dayOffset in 0..<7 {
+            guard let dayDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStart) else { continue }
+            let dayStart = calendar.startOfDay(for: dayDate)
+
+            // Filter issues for this specific day
+            let dayIssues = issues.filter { issue in
+                guard let completedDate = issue.completedDate else { return false }
+                let completedDateStart = calendar.startOfDay(for: completedDate)
+                return completedDateStart == dayStart
+            }.sorted { ($0.completedDate ?? $0.createdAt) > ($1.completedDate ?? $1.createdAt) }
+
+            // Format the day name and date
+            let dayFormatter = DateFormatter()
+            dayFormatter.dateFormat = "EEE" // Mon, Tue, etc.
+            let dayName = dayFormatter.string(from: dayDate)
+
+            let dateFormatter = DateFormatter()
+            dateFormatter.dateFormat = "d" // Day number
+            let dayNumber = dateFormatter.string(from: dayDate)
+
+            let title = "\(dayName) \(dayNumber)"
+            // Use ISO8601 date string as ID so we can parse it back for drag-drop
+            let id = "week-day-completed-" + iso8601Formatter.string(from: dayStart)
 
             groups.append(IssueGroup(
                 id: id,

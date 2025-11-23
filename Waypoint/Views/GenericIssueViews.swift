@@ -13,6 +13,7 @@ struct IssueDefaults {
 	var priority: IssuePriority?
 	var project: Project?
 	var dueDate: Date?
+	var completedDate: Date?
 	var tags: Set<UUID>?
 }
 
@@ -801,6 +802,38 @@ private func dueDateForGroup(_ group: IssueGroup) -> Date? {
     }
 }
 
+private func completedDateForGroup(_ group: IssueGroup) -> Date? {
+    // Return completed date based on group ID
+    let calendar = Calendar.current
+    let today = calendar.startOfDay(for: Date())
+
+    // Check if this is a week-based day group for completed dates (format: "week-day-completed-ISO8601")
+    if group.id.hasPrefix("week-day-completed-") {
+        let dateString = String(group.id.dropFirst("week-day-completed-".count))
+        let iso8601Formatter = ISO8601DateFormatter()
+        iso8601Formatter.timeZone = calendar.timeZone
+        return iso8601Formatter.date(from: dateString)
+    }
+
+    switch group.id {
+    case "today":
+        return today
+    case "yesterday":
+        return calendar.date(byAdding: .day, value: -1, to: today)
+    case "this-week":
+        // Set to 3 days ago (middle of the week)
+        return calendar.date(byAdding: .day, value: -3, to: today)
+    case "last-week":
+        // Set to 10 days ago (middle of last week)
+        return calendar.date(byAdding: .day, value: -10, to: today)
+    case "older":
+        // Set to 30 days ago
+        return calendar.date(byAdding: .day, value: -30, to: today)
+    default:
+        return nil
+    }
+}
+
 private func tagIdForGroup(_ group: IssueGroup) -> UUID? {
     // Return tag UUID from group ID (excludes "no-tags")
     if group.id == "no-tags" {
@@ -827,6 +860,8 @@ private func defaultsForGroup(_ group: IssueGroup, grouping: IssueGrouping, mode
         }
     case .dueDate:
         defaults.dueDate = dueDateForGroup(group)
+    case .completedDate:
+        defaults.completedDate = completedDateForGroup(group)
     case .tags:
         if let tagId = tagIdForGroup(group) {
             defaults.tags = [tagId]
@@ -850,6 +885,8 @@ private func shouldShowAddButton(for group: IssueGroup, grouping: IssueGrouping)
         return true
     case .dueDate:
         return dueDateForGroup(group) != nil
+    case .completedDate:
+        return completedDateForGroup(group) != nil
     case .tags:
         return tagIdForGroup(group) != nil
     case .none:

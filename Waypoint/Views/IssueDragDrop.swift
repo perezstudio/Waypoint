@@ -425,8 +425,16 @@ func updateIssueForGroup(
 	switch grouping {
 	case .status:
 		if let status = statusFromGroupId(targetGroupId) {
+			let oldStatus = issue.status
 			issue.status = status
 			issue.updatedAt = Date()
+
+			// Auto-set completedDate when marking as done
+			if oldStatus != .done && status == .done {
+				issue.completedDate = Date()
+			} else if oldStatus == .done && status != .done {
+				issue.completedDate = nil
+			}
 		}
 
 	case .priority:
@@ -460,6 +468,13 @@ func updateIssueForGroup(
 		// Update due date based on target group
 		if let dueDate = dueDateFromGroupId(targetGroupId) {
 			issue.dueDate = dueDate
+			issue.updatedAt = Date()
+		}
+
+	case .completedDate:
+		// Update completed date based on target group
+		if let completedDate = completedDateFromGroupId(targetGroupId) {
+			issue.completedDate = completedDate
 			issue.updatedAt = Date()
 		}
 
@@ -515,6 +530,35 @@ private func dueDateFromGroupId(_ groupId: String) -> Date? {
 		return calendar.date(byAdding: .day, value: 3, to: today)
 	case "later":
 		return calendar.date(byAdding: .day, value: 14, to: today)
+	default:
+		return nil
+	}
+}
+
+private func completedDateFromGroupId(_ groupId: String) -> Date? {
+	let calendar = Calendar.current
+	let today = calendar.startOfDay(for: Date())
+
+	// Check if this is a week-based day group for completed dates (format: "week-day-completed-ISO8601")
+	if groupId.hasPrefix("week-day-completed-") {
+		let dateString = String(groupId.dropFirst("week-day-completed-".count))
+		let iso8601Formatter = ISO8601DateFormatter()
+		iso8601Formatter.timeZone = calendar.timeZone
+		return iso8601Formatter.date(from: dateString)
+	}
+
+	// Handle standard completed date groups
+	switch groupId {
+	case "today":
+		return today
+	case "yesterday":
+		return calendar.date(byAdding: .day, value: -1, to: today)
+	case "this-week":
+		return calendar.date(byAdding: .day, value: -3, to: today) // Mid-week
+	case "last-week":
+		return calendar.date(byAdding: .day, value: -10, to: today) // Mid last week
+	case "older":
+		return calendar.date(byAdding: .day, value: -30, to: today) // A month ago
 	default:
 		return nil
 	}

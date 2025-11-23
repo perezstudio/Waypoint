@@ -32,6 +32,7 @@ final class Issue {
     var createdAt: Date
     var updatedAt: Date
     var dueDate: Date?
+    var completedDate: Date?
     var sortOrder: Double?
 
     var project: Project?

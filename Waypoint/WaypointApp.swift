@@ -24,7 +24,7 @@ struct WaypointApp: App {
             let fileURL = appSupportURL.appendingPathComponent(filename)
             if fileManager.fileExists(atPath: fileURL.path) {
                 try? fileManager.removeItem(at: fileURL)
-                print("🗑️ Reset database: Deleted \(filename) for fresh V1 schema")
+                print("🗑️ Reset database: Deleted \(filename) for fresh schema")
             }
         }
         */

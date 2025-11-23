@@ -129,8 +129,16 @@ struct InspectorView: View {
 									selectedValue: issue.status,
 									onSelect: { newValue in
 										if let status = newValue as? Status {
+											let oldStatus = issue.status
 											issue.status = status
 											issue.updatedAt = Date()
+
+											// Auto-set completedDate when marking as done
+											if oldStatus != .done && status == .done {
+												issue.completedDate = Date()
+											} else if oldStatus == .done && status != .done {
+												issue.completedDate = nil
+											}
 										}
 									}
 								)
