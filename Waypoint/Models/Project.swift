@@ -19,6 +19,7 @@ final class Project {
     var createdAt: Date
     var updatedAt: Date
     var favorite: Bool = false
+    var sortOrder: Double?
 
     @Relationship(deleteRule: .cascade, inverse: \Issue.project)
     var issues: [Issue] = []
@@ -49,9 +50,15 @@ final class Project {
         self.createdAt = Date()
         self.updatedAt = Date()
         self.favorite = false
+        self.sortOrder = Date().timeIntervalSince1970
         self.space = space
 
         // Create default view settings for new projects
         self.viewSettings = ProjectIssuesViewSettings(project: nil)
+    }
+
+    // Computed property to get sortOrder with fallback to createdAt
+    var effectiveSortOrder: Double {
+        sortOrder ?? createdAt.timeIntervalSince1970
     }
 }

@@ -15,18 +15,18 @@ import Combine
 @MainActor
 class DragDropManager: ObservableObject {
 	@Published var isDragging: Bool = false
-	@Published var draggedIssueId: UUID? = nil
+	@Published var draggedItemId: UUID? = nil
 	@Published var hoveredGroupId: String? = nil
 	@Published var hoveredDropZoneId: String? = nil
 
-	func startDrag(_ issueId: UUID) {
+	func startDrag(_ itemId: UUID) {
 		isDragging = true
-		draggedIssueId = issueId
+		draggedItemId = itemId
 	}
 
 	func endDrag() {
 		isDragging = false
-		draggedIssueId = nil
+		draggedItemId = nil
 		hoveredGroupId = nil
 		hoveredDropZoneId = nil
 	}
@@ -57,6 +57,43 @@ class IssueDragDataWrapper: NSObject, NSItemProviderWriting {
 	let data: IssueDragData
 
 	init(data: IssueDragData) {
+		self.data = data
+		super.init()
+	}
+
+	static var writableTypeIdentifiersForItemProvider: [String] {
+		[UTType.data.identifier]
+	}
+
+	func loadData(withTypeIdentifier typeIdentifier: String, forItemProviderCompletionHandler completionHandler: @escaping (Data?, Error?) -> Void) -> Progress? {
+		let encoder = JSONEncoder()
+		do {
+			let encoded = try encoder.encode(data)
+			completionHandler(encoded, nil)
+		} catch {
+			completionHandler(nil, error)
+		}
+		return nil
+	}
+}
+
+// MARK: - Project Drag Data
+
+struct ProjectDragData: Codable, Transferable {
+	let projectId: UUID
+	let sourceGroupId: String
+	let currentGrouping: ProjectGrouping
+
+	static var transferRepresentation: some TransferRepresentation {
+		CodableRepresentation(contentType: .data)
+	}
+}
+
+// Wrapper class for NSItemProvider
+class ProjectDragDataWrapper: NSObject, NSItemProviderWriting {
+	let data: ProjectDragData
+
+	init(data: ProjectDragData) {
 		self.data = data
 		super.init()
 	}
@@ -199,7 +236,7 @@ struct DraggableIssueCard: View {
 	@EnvironmentObject var dragManager: DragDropManager
 
 	private var isDragging: Bool {
-		dragManager.draggedIssueId == issue.id
+		dragManager.draggedItemId == issue.id
 	}
 
 	var body: some View {
@@ -227,6 +264,148 @@ struct DraggableIssueCard: View {
 			IssueCard(
 				issue: issue,
 				isInspectorVisible: $isInspectorVisible,
+				focusedElement: $focusedElement
+			)
+			.frame(width: 250)
+			.opacity(0.8)
+		}
+	}
+}
+
+// MARK: - Project Drop Zone (Between Cards)
+
+struct ProjectDropZone: View {
+	let groupId: String
+	let position: DropPosition
+	let onDrop: (ProjectDragData, DropPosition) -> Bool
+
+	@EnvironmentObject var dragManager: DragDropManager
+	@State private var isHovered: Bool = false
+
+	private var isActive: Bool {
+		dragManager.isDragging && isHovered
+	}
+
+	private var dropZoneHeight: CGFloat {
+		isActive ? 40 : 4
+	}
+
+	var body: some View {
+		Rectangle()
+			.fill(isActive ? Color.accentColor.opacity(0.2) : Color.clear)
+			.frame(height: dropZoneHeight)
+			.frame(maxWidth: .infinity)
+			.animation(.spring(response: 0.3, dampingFraction: 0.8), value: isActive)
+			.dropDestination(for: ProjectDragData.self) { items, location in
+				guard let dragData = items.first else { return false }
+				return onDrop(dragData, position)
+			} isTargeted: { targeted in
+				withAnimation {
+					isHovered = targeted
+					if targeted {
+						dragManager.updateHoveredDropZone(position.id)
+					} else if dragManager.hoveredDropZoneId == position.id {
+						dragManager.updateHoveredDropZone(nil)
+					}
+				}
+			}
+	}
+}
+
+// MARK: - Empty Project Group Drop Zone
+
+struct EmptyProjectGroupDropZone: View {
+	let group: ProjectGroup
+	let onDrop: (ProjectDragData, DropPosition) -> Bool
+
+	@EnvironmentObject var dragManager: DragDropManager
+	@State private var isHovered: Bool = false
+
+	private var isActive: Bool {
+		dragManager.isDragging && (isHovered || dragManager.hoveredGroupId == group.id)
+	}
+
+	var body: some View {
+		VStack(spacing: 12) {
+			Image(systemName: "arrow.down.circle")
+				.font(.system(size: 32))
+				.foregroundStyle(isActive ? Color.accentColor : .secondary)
+
+			Text("Drop here")
+				.font(.subheadline)
+				.foregroundStyle(isActive ? Color.accentColor : .secondary)
+		}
+		.frame(maxWidth: .infinity)
+		.frame(height: 120)
+		.background(
+			RoundedRectangle(cornerRadius: 8)
+				.fill(isActive ? Color.accentColor.opacity(0.15) : Color.accentColor.opacity(0.05))
+		)
+		.overlay(
+			RoundedRectangle(cornerRadius: 8)
+				.strokeBorder(
+					isActive ? Color.accentColor : Color.accentColor.opacity(0.3),
+					style: StrokeStyle(lineWidth: 2, dash: isActive ? [] : [8, 4])
+				)
+		)
+		.scaleEffect(isActive ? 1.02 : 1.0)
+		.animation(.spring(response: 0.3, dampingFraction: 0.8), value: isActive)
+		.dropDestination(for: ProjectDragData.self) { items, location in
+			guard let dragData = items.first else { return false }
+			return onDrop(dragData, .empty)
+		} isTargeted: { targeted in
+			withAnimation {
+				isHovered = targeted
+				if targeted {
+					dragManager.updateHoveredGroup(group.id)
+				} else if dragManager.hoveredGroupId == group.id {
+					dragManager.updateHoveredGroup(nil)
+				}
+			}
+		}
+	}
+}
+
+// MARK: - Draggable Project Card
+
+struct DraggableProjectCard: View {
+	let project: Project
+	let groupId: String
+	let grouping: ProjectGrouping
+	let onSelect: () -> Void
+	@FocusState.Binding var focusedElement: FocusableElement?
+
+	@EnvironmentObject var dragManager: DragDropManager
+
+	private var isDragging: Bool {
+		dragManager.draggedItemId == project.id
+	}
+
+	var body: some View {
+		ProjectCard(
+			project: project,
+			onSelect: onSelect,
+			focusedElement: $focusedElement
+		)
+		.opacity(isDragging ? 0.5 : 1.0)
+		.scaleEffect(isDragging ? 0.95 : 1.0)
+		.animation(.spring(response: 0.3, dampingFraction: 0.8), value: isDragging)
+		.onDrag {
+			// Start drag state immediately
+			dragManager.startDrag(project.id)
+
+			// Return the drag data wrapped in NSItemProvider
+			let dragData = ProjectDragData(
+				projectId: project.id,
+				sourceGroupId: groupId,
+				currentGrouping: grouping
+			)
+			return NSItemProvider(object: ProjectDragDataWrapper(data: dragData))
+		} preview: {
+			// Drag preview
+			ProjectCard(
+				project: project,
+				onSelect: onSelect,
 				focusedElement: $focusedElement
 			)
 			.frame(width: 250)
@@ -338,5 +517,56 @@ private func dueDateFromGroupId(_ groupId: String) -> Date? {
 		return calendar.date(byAdding: .day, value: 14, to: today)
 	default:
 		return nil
+	}
+}
+
+func updateProjectForGroup(
+	project: Project,
+	targetGroupId: String,
+	grouping: ProjectGrouping,
+	modelContext: ModelContext
+) {
+	switch grouping {
+	case .status:
+		if let status = projectStatusFromGroupId(targetGroupId) {
+			project.status = status
+			project.updatedAt = Date()
+		}
+
+	case .space:
+		// Find space by group ID
+		let spaceId = targetGroupId == "no-space" ? nil : UUID(uuidString: targetGroupId)
+		if let spaceId = spaceId {
+			let descriptor = FetchDescriptor<Space>(
+				predicate: #Predicate { $0.id == spaceId }
+			)
+			if let space = try? modelContext.fetch(descriptor).first {
+				project.space = space
+				project.updatedAt = Date()
+			}
+		} else {
+			project.space = nil
+			project.updatedAt = Date()
+		}
+
+	case .issueCount, .createdDate:
+		// These groupings are read-only, no property updates needed
+		break
+
+	case .none:
+		// No property mappings
+		break
+	}
+
+	try? modelContext.save()
+}
+
+private func projectStatusFromGroupId(_ groupId: String) -> Status? {
+	switch groupId {
+	case "todo": return .todo
+	case "inProgress": return .inProgress
+	case "review": return .review
+	case "done": return .done
+	default: return nil
 	}
 }

@@ -36,7 +36,7 @@ struct ProjectGrouper {
         var groups: [ProjectGroup] = []
 
         for (index, status) in statusOrder.enumerated() {
-            let statusProjects = projects.filter { $0.status == status }
+            let statusProjects = projects.filter { $0.status == status }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
             let title: String = {
                 switch status {
                 case .todo: return "To Do"
@@ -66,7 +66,7 @@ struct ProjectGrouper {
             ProjectGroup(
                 id: spaceName.lowercased().replacingOccurrences(of: " ", with: "_"),
                 title: spaceName,
-                projects: projects,
+                projects: projects.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                 order: spaceName == "No Space" ? Int.max : 0
             )
         }.sorted { group1, group2 in
@@ -103,7 +103,7 @@ struct ProjectGrouper {
             ProjectGroup(
                 id: countRange.lowercased().replacingOccurrences(of: " ", with: "_").replacingOccurrences(of: "-", with: "_"),
                 title: countRange,
-                projects: projects,
+                projects: projects.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                 order: orderMap[countRange] ?? 0
             )
         }.sorted { $0.order < $1.order }
@@ -137,7 +137,7 @@ struct ProjectGrouper {
             ProjectGroup(
                 id: dateRange.lowercased().replacingOccurrences(of: " ", with: "_"),
                 title: dateRange,
-                projects: projects,
+                projects: projects.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                 order: orderMap[dateRange] ?? 0
             )
         }.sorted { $0.order < $1.order }
@@ -149,7 +149,7 @@ struct ProjectGrouper {
             ProjectGroup(
                 id: "all",
                 title: "All Projects",
-                projects: projects,
+                projects: projects.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder },
                 order: 0
             )
         ]

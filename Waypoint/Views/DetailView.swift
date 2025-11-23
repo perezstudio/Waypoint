@@ -65,9 +65,9 @@ struct DetailView: View {
 
 	private var shouldShowViewSettingsToolbar: Bool {
 		switch projectStore.selectedView {
-		case .system(let systemView):
-			// Show for inbox, today, upcoming, completed, and projects
-			return true
+		case .system:
+			// Don't show inline settings for system views (they use popover)
+			return false
 		case .project:
 			// Show for project issues view
 			return projectStore.selectedViewType == .issues
@@ -163,10 +163,8 @@ struct DetailView: View {
 		// Show for system views that have settings
 		if case .system(let systemView) = projectStore.selectedView {
 			switch systemView {
-			case .inbox, .allIssues, .today, .upcoming, .completed:
+			case .inbox, .allIssues, .today, .upcoming, .completed, .projects:
 				return true
-			case .projects:
-				return false
 			}
 		}
 		return false
@@ -348,17 +346,26 @@ struct DetailView: View {
 					}
 
 					// Settings button - show for both project issues and system views
-					if shouldShowSettingsButton, let binding = settingsBinding {
+					if shouldShowSettingsButton {
 						IconButton(
 							icon: "slider.horizontal.3",
 							action: { showingSettingsPopover.toggle() },
 							tooltip: "View Settings"
 						)
 						.popover(isPresented: $showingSettingsPopover) {
-							if case .system(let systemView) = projectStore.selectedView, systemView == .upcoming {
-								IssueSettingsPopover(settings: binding, hideGroupBy: true)
-							} else {
-								IssueSettingsPopover(settings: binding)
+							// Project settings popover for All Projects view
+							if case .system(let systemView) = projectStore.selectedView,
+							   systemView == .projects,
+							   let projectSettings = currentProjectViewSettings {
+								ProjectSettingsPopover(settings: projectSettings)
+							}
+							// Issue settings popover for other views
+							else if let binding = settingsBinding {
+								if case .system(let systemView) = projectStore.selectedView, systemView == .upcoming {
+									IssueSettingsPopover(settings: binding, hideGroupBy: true)
+								} else {
+									IssueSettingsPopover(settings: binding)
+								}
 							}
 						}
 					}

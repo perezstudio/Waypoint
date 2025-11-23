@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 // MARK: - Helper Functions
 
@@ -26,13 +27,16 @@ private func colorForProjectGroup(_ group: ProjectGroup) -> Color {
 
 struct GenericProjectBoardView: View {
     let groups: [ProjectGroup]
+    let grouping: ProjectGrouping
     let showAddButton: Bool
     let onAddProject: (() -> Void)?
     let onSelectProject: (Project) -> Void
     @FocusState private var focusedElement: FocusableElement?
+    @StateObject private var dragManager = DragDropManager()
 
-    init(groups: [ProjectGroup], showAddButton: Bool = true, onAddProject: (() -> Void)? = nil, onSelectProject: @escaping (Project) -> Void) {
+    init(groups: [ProjectGroup], grouping: ProjectGrouping, showAddButton: Bool = true, onAddProject: (() -> Void)? = nil, onSelectProject: @escaping (Project) -> Void) {
         self.groups = groups
+        self.grouping = grouping
         self.showAddButton = showAddButton
         self.onAddProject = onAddProject
         self.onSelectProject = onSelectProject
@@ -152,14 +156,20 @@ struct GenericProjectBoardView: View {
                 ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
                     GenericProjectColumn(
                         group: group,
+                        grouping: grouping,
                         showAddButton: showAddButton,
                         onAddProject: onAddProject,
                         onSelectProject: onSelectProject,
                         focusedElement: $focusedElement
                     )
+                    .environmentObject(dragManager)
                 }
             }
             .padding(20)
+        }
+        .onAppear {
+            // Clean up drag state when view appears
+            dragManager.endDrag()
         }
         .onKeyPress(.upArrow) {
             moveUp()
@@ -192,13 +202,16 @@ struct GenericProjectBoardView: View {
 
 struct GenericProjectListView: View {
     let groups: [ProjectGroup]
+    let grouping: ProjectGrouping
     let showAddButton: Bool
     let onAddProject: (() -> Void)?
     let onSelectProject: (Project) -> Void
     @FocusState private var focusedElement: FocusableElement?
+    @StateObject private var dragManager = DragDropManager()
 
-    init(groups: [ProjectGroup], showAddButton: Bool = true, onAddProject: (() -> Void)? = nil, onSelectProject: @escaping (Project) -> Void) {
+    init(groups: [ProjectGroup], grouping: ProjectGrouping, showAddButton: Bool = true, onAddProject: (() -> Void)? = nil, onSelectProject: @escaping (Project) -> Void) {
         self.groups = groups
+        self.grouping = grouping
         self.showAddButton = showAddButton
         self.onAddProject = onAddProject
         self.onSelectProject = onSelectProject
@@ -270,14 +283,20 @@ struct GenericProjectListView: View {
             ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
                 GenericProjectSection(
                     group: group,
+                    grouping: grouping,
                     showAddButton: showAddButton,
                     onAddProject: onAddProject,
                     onSelectProject: onSelectProject,
                     focusedElement: $focusedElement
                 )
+                .environmentObject(dragManager)
             }
         }
         .padding(20)
+        .onAppear {
+            // Clean up drag state when view appears
+            dragManager.endDrag()
+        }
         .onKeyPress(.upArrow) {
             moveUp()
             return .handled
@@ -301,10 +320,14 @@ struct GenericProjectListView: View {
 
 struct GenericProjectColumn: View {
     let group: ProjectGroup
+    let grouping: ProjectGrouping
     let showAddButton: Bool
     let onAddProject: (() -> Void)?
     let onSelectProject: (Project) -> Void
     @FocusState.Binding var focusedElement: FocusableElement?
+
+    @EnvironmentObject var dragManager: DragDropManager
+    @Environment(\.modelContext) private var modelContext
 
     private var color: Color {
         colorForProjectGroup(group)
@@ -315,6 +338,82 @@ struct GenericProjectColumn: View {
             return id == group.id
         }
         return false
+    }
+
+    private func handleDrop(_ dragData: ProjectDragData, at position: DropPosition) -> Bool {
+        // Find the dragged project
+        guard let project = group.projects.first(where: { $0.id == dragData.projectId }) ??
+                          findProjectInAllGroups(dragData.projectId) else {
+            return false
+        }
+
+        // Update project properties if moving to different group
+        if dragData.sourceGroupId != group.id {
+            updateProjectForGroup(
+                project: project,
+                targetGroupId: group.id,
+                grouping: grouping,
+                modelContext: modelContext
+            )
+        }
+
+        // Update sortOrder based on drop position
+        let newSortOrder = calculateSortOrder(for: position, in: group, excluding: project)
+        project.sortOrder = newSortOrder
+        project.updatedAt = Date()
+
+        try? modelContext.save()
+
+        // End drag state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            dragManager.endDrag()
+        }
+
+        return true
+    }
+
+    private func calculateSortOrder(for position: DropPosition, in group: ProjectGroup, excluding project: Project) -> Double {
+        // Get all projects in this group except the one being dragged
+        let otherProjects = group.projects.filter { $0.id != project.id }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
+
+        switch position {
+        case .before(let beforeProjectId):
+            // Find the project we're inserting before
+            guard let beforeProject = group.projects.first(where: { $0.id == beforeProjectId }) else {
+                return Date().timeIntervalSince1970
+            }
+
+            // Find the project before this one (if any)
+            if let beforeIndex = otherProjects.firstIndex(where: { $0.id == beforeProjectId }),
+               beforeIndex > 0 {
+                let previousProject = otherProjects[beforeIndex - 1]
+                // Insert between previous and before
+                return (previousProject.effectiveSortOrder + beforeProject.effectiveSortOrder) / 2.0
+            } else {
+                // Insert before the first project
+                return beforeProject.effectiveSortOrder - 1.0
+            }
+
+        case .end:
+            // Insert at the end
+            if let lastProject = otherProjects.last {
+                return lastProject.effectiveSortOrder + 1.0
+            } else {
+                return Date().timeIntervalSince1970
+            }
+
+        case .empty:
+            // First item in empty group
+            return Date().timeIntervalSince1970
+        }
+    }
+
+    private func findProjectInAllGroups(_ projectId: UUID) -> Project? {
+        // Search through model context for the project
+        let descriptor = FetchDescriptor<Project>(
+            predicate: #Predicate { $0.id == projectId }
+        )
+        return try? modelContext.fetch(descriptor).first
     }
 
     var body: some View {
@@ -343,11 +442,42 @@ struct GenericProjectColumn: View {
             // Project cards
             ScrollView {
                 VStack(spacing: 8) {
-                    ForEach(group.projects, id: \.id) { project in
-                        ProjectCard(
-                            project: project,
-                            onSelect: { onSelectProject(project) },
-                            focusedElement: $focusedElement
+                    if group.projects.isEmpty {
+                        // Show empty drop zone when dragging
+                        if dragManager.isDragging {
+                            EmptyProjectGroupDropZone(group: group, onDrop: handleDrop)
+                                .transition(.opacity.combined(with: .scale))
+                        } else {
+                            Text("No projects")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 12)
+                        }
+                    } else {
+                        ForEach(group.projects, id: \.id) { project in
+                            // Drop zone before each card
+                            ProjectDropZone(
+                                groupId: group.id,
+                                position: .before(project.id),
+                                onDrop: handleDrop
+                            )
+
+                            // Draggable card
+                            DraggableProjectCard(
+                                project: project,
+                                groupId: group.id,
+                                grouping: grouping,
+                                onSelect: { onSelectProject(project) },
+                                focusedElement: $focusedElement
+                            )
+                        }
+
+                        // Drop zone at end
+                        ProjectDropZone(
+                            groupId: group.id,
+                            position: .end,
+                            onDrop: handleDrop
                         )
                     }
 
@@ -378,14 +508,6 @@ struct GenericProjectColumn: View {
                             focusedElement = .addButton(group.id)
                         }
                     }
-
-                    if group.projects.isEmpty {
-                        Text("No projects")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                    }
                 }
             }
         }
@@ -397,10 +519,14 @@ struct GenericProjectColumn: View {
 
 struct GenericProjectSection: View {
     let group: ProjectGroup
+    let grouping: ProjectGrouping
     let showAddButton: Bool
     let onAddProject: (() -> Void)?
     let onSelectProject: (Project) -> Void
     @FocusState.Binding var focusedElement: FocusableElement?
+
+    @EnvironmentObject var dragManager: DragDropManager
+    @Environment(\.modelContext) private var modelContext
 
     private var color: Color {
         colorForProjectGroup(group)
@@ -413,29 +539,99 @@ struct GenericProjectSection: View {
         return false
     }
 
+    private func handleDrop(_ dragData: ProjectDragData, at position: DropPosition) -> Bool {
+        // Find the dragged project
+        guard let project = group.projects.first(where: { $0.id == dragData.projectId }) ??
+                          findProjectInAllGroups(dragData.projectId) else {
+            return false
+        }
+
+        // Update project properties if moving to different group
+        if dragData.sourceGroupId != group.id {
+            updateProjectForGroup(
+                project: project,
+                targetGroupId: group.id,
+                grouping: grouping,
+                modelContext: modelContext
+            )
+        }
+
+        // Update sortOrder based on drop position
+        let newSortOrder = calculateSortOrder(for: position, in: group, excluding: project)
+        project.sortOrder = newSortOrder
+        project.updatedAt = Date()
+
+        try? modelContext.save()
+
+        // End drag state
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            dragManager.endDrag()
+        }
+
+        return true
+    }
+
+    private func calculateSortOrder(for position: DropPosition, in group: ProjectGroup, excluding project: Project) -> Double {
+        // Get all projects in this group except the one being dragged
+        let otherProjects = group.projects.filter { $0.id != project.id }.sorted { $0.effectiveSortOrder < $1.effectiveSortOrder }
+
+        switch position {
+        case .before(let beforeProjectId):
+            // Find the project we're inserting before
+            guard let beforeProject = group.projects.first(where: { $0.id == beforeProjectId }) else {
+                return Date().timeIntervalSince1970
+            }
+
+            // Find the project before this one (if any)
+            if let beforeIndex = otherProjects.firstIndex(where: { $0.id == beforeProjectId }),
+               beforeIndex > 0 {
+                let previousProject = otherProjects[beforeIndex - 1]
+                // Insert between previous and before
+                return (previousProject.effectiveSortOrder + beforeProject.effectiveSortOrder) / 2.0
+            } else {
+                // Insert before the first project
+                return beforeProject.effectiveSortOrder - 1.0
+            }
+
+        case .end:
+            // Insert at the end
+            if let lastProject = otherProjects.last {
+                return lastProject.effectiveSortOrder + 1.0
+            } else {
+                return Date().timeIntervalSince1970
+            }
+
+        case .empty:
+            // First item in empty group
+            return Date().timeIntervalSince1970
+        }
+    }
+
+    private func findProjectInAllGroups(_ projectId: UUID) -> Project? {
+        // Search through model context for the project
+        let descriptor = FetchDescriptor<Project>(
+            predicate: #Predicate { $0.id == projectId }
+        )
+        return try? modelContext.fetch(descriptor).first
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             // Section header
             HStack {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 8, height: 8)
-
-                    Text(group.title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-
-                    Text("\(group.projects.count)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.tertiary.opacity(0.5))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
+                Text(group.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
 
                 Spacer()
+
+                Text("\(group.projects.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.tertiary.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
 
                 // Add project button
                 if showAddButton {
@@ -458,25 +654,52 @@ struct GenericProjectSection: View {
                     }
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(color.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             // Project cards
             VStack(spacing: 8) {
-                ForEach(group.projects, id: \.id) { project in
-                    ProjectCard(
-                        project: project,
-                        onSelect: { onSelectProject(project) },
-                        focusedElement: $focusedElement
-                    )
-                }
-
                 if group.projects.isEmpty {
-                    Text("No projects")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                        .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
-                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    // Show empty drop zone when dragging
+                    if dragManager.isDragging {
+                        EmptyProjectGroupDropZone(group: group, onDrop: handleDrop)
+                            .transition(.opacity.combined(with: .scale))
+                    } else {
+                        Text("No projects")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 24)
+                            .background(Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                            .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                } else {
+                    ForEach(group.projects, id: \.id) { project in
+                        // Drop zone before each card
+                        ProjectDropZone(
+                            groupId: group.id,
+                            position: .before(project.id),
+                            onDrop: handleDrop
+                        )
+
+                        // Draggable card
+                        DraggableProjectCard(
+                            project: project,
+                            groupId: group.id,
+                            grouping: grouping,
+                            onSelect: { onSelectProject(project) },
+                            focusedElement: $focusedElement
+                        )
+                    }
+
+                    // Drop zone at end
+                    ProjectDropZone(
+                        groupId: group.id,
+                        position: .end,
+                        onDrop: handleDrop
+                    )
                 }
             }
         }

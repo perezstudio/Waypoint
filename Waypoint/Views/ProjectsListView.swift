@@ -35,6 +35,7 @@ struct ProjectsListView: View {
                 case .board:
                     GenericProjectBoardView(
                         groups: groupedProjects,
+                        grouping: settings.groupBy,
                         showAddButton: true,
                         onAddProject: { showingCreateProject = true },
                         onSelectProject: { project in
@@ -45,6 +46,7 @@ struct ProjectsListView: View {
                     ScrollView {
                         GenericProjectListView(
                             groups: groupedProjects,
+                            grouping: settings.groupBy,
                             showAddButton: true,
                             onAddProject: { showingCreateProject = true },
                             onSelectProject: { project in
