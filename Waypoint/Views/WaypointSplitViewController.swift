@@ -133,11 +133,14 @@ class WaypointSplitViewController: NSSplitViewController {
     }
 
     override func splitViewDidResizeSubviews(_ notification: Notification) {
-        // Save sidebar width when user manually resizes
-        if let sidebarWidth = splitView.subviews.first?.frame.width, sidebarWidth > 1 {
-            savedSidebarWidth = sidebarWidth
+        // Update binding to reflect actual state
+        if let sidebarWidth = splitView.subviews.first?.frame.width {
+            // Save sidebar width when user manually resizes (but only if it's > 1)
+            if sidebarWidth > 1 {
+                savedSidebarWidth = sidebarWidth
+            }
 
-            // Update binding to reflect actual state asynchronously
+            // Always update binding to reflect actual state
             let isCollapsed = sidebarWidth < 1
             if isSidebarCollapsed?.wrappedValue != isCollapsed {
                 DispatchQueue.main.async { [weak self] in

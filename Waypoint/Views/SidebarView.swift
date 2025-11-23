@@ -9,7 +9,6 @@ import SwiftData
 import SwiftUI
 
 struct SidebarView: View {
-    @Binding var isSidebarCollapsed: Bool
     @Environment(ProjectStore.self) private var projectStore
 
     // Creation menu and sheets state
@@ -21,15 +20,9 @@ struct SidebarView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Sidebar toggle button - pushed to the right
+            // Sidebar toggle button area - currently empty but preserving space for future use
             HStack {
                 Spacer()
-
-                SidebarIconButton(
-                    icon: "sidebar.left",
-                    action: {
-                        isSidebarCollapsed.toggle()
-                    }, tooltip: "Toggle Sidebar")
             }
             .padding(.horizontal, 16)
             .padding(.top, 12)
@@ -99,7 +92,7 @@ struct SidebarView: View {
 }
 
 #Preview {
-    SidebarView(isSidebarCollapsed: .constant(false))
+    SidebarView()
         .environment(ProjectStore())
         .modelContainer(for: [Project.self, Issue.self, Space.self, Tag.self], inMemory: true)
 }

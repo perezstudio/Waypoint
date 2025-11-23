@@ -258,22 +258,8 @@ struct DetailView: View {
 		VStack(spacing: 0) {
 			// Header toolbar
 			HStack(alignment: .center, spacing: 0) {
-				// Left: Sidebar Toggle (when collapsed) + Back Button (if from projects list) + Icon + View Name
+				// Left: Back Button (if from projects list) + Icon + View Name
 				HStack(spacing: 12) {
-					// Sidebar toggle button - only show when sidebar is collapsed
-					if isSidebarCollapsed {
-						IconButton(
-							icon: "sidebar.left",
-							action: {
-								withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
-									isSidebarCollapsed = false
-								}
-							},
-							tooltip: "Show Sidebar"
-						)
-						.transition(.move(edge: .leading).combined(with: .opacity))
-					}
-
 					// Back button - show when viewing project that came from projects list
 					if case .project = projectStore.selectedView, projectStore.cameFromProjectsList {
 						IconButton(
@@ -299,7 +285,6 @@ struct DetailView: View {
 						.font(.title2)
 						.fontWeight(.semibold)
 				}
-				.animation(.spring(response: 0.3, dampingFraction: 0.8), value: isSidebarCollapsed)
 				.animation(.spring(response: 0.3, dampingFraction: 0.8), value: projectStore.cameFromProjectsList)
 				.frame(maxWidth: .infinity, alignment: .leading)
 
