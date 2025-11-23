@@ -21,7 +21,7 @@ struct ContentView: View {
 
 	var body: some View {
 		SplitView(
-			sidebar: SidebarView(),
+			sidebar: SidebarView(isSidebarCollapsed: $isSidebarCollapsed),
 			detail: DetailPaneView(isInspectorVisible: $isInspectorVisible, isSidebarCollapsed: $isSidebarCollapsed),
 			isSidebarCollapsed: $isSidebarCollapsed
 		)
