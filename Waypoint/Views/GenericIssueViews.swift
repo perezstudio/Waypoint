@@ -152,20 +152,22 @@ struct GenericIssueBoardView: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 16) {
-                ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
-                    GenericIssueColumn(
-                        group: group,
-                        grouping: grouping,
-                        showAddButton: showAddButton,
-                        onAddIssue: onAddIssue,
-                        isInspectorVisible: $isInspectorVisible,
-                        focusedElement: $focusedElement
-                    )
-                    .environmentObject(dragManager)
+            ScrollView(.vertical, showsIndicators: true) {
+                HStack(alignment: .top, spacing: 16) {
+                    ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
+                        GenericIssueColumn(
+                            group: group,
+                            grouping: grouping,
+                            showAddButton: showAddButton,
+                            onAddIssue: onAddIssue,
+                            isInspectorVisible: $isInspectorVisible,
+                            focusedElement: $focusedElement
+                        )
+                        .environmentObject(dragManager)
+                    }
                 }
+                .padding(20)
             }
-            .padding(20)
         }
         .onAppear {
             // Clean up drag state when view appears
@@ -285,20 +287,22 @@ struct GenericIssueListView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 24) {
-            ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
-                GenericIssueSection(
-                    group: group,
-                    grouping: grouping,
-                    showAddButton: showAddButton,
-                    onAddIssue: onAddIssue,
-                    isInspectorVisible: $isInspectorVisible,
-                    focusedElement: $focusedElement
-                )
-                .environmentObject(dragManager)
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
+                    GenericIssueSection(
+                        group: group,
+                        grouping: grouping,
+                        showAddButton: showAddButton,
+                        onAddIssue: onAddIssue,
+                        isInspectorVisible: $isInspectorVisible,
+                        focusedElement: $focusedElement
+                    )
+                    .environmentObject(dragManager)
+                }
             }
+            .padding(20)
         }
-        .padding(20)
         .onAppear {
             // Clean up drag state when view appears
             dragManager.endDrag()
@@ -446,82 +450,82 @@ struct GenericIssueColumn: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             // Issue cards
-            ScrollView {
-                VStack(spacing: 8) {
-                    if group.issues.isEmpty {
-                        // Show empty drop zone when dragging
-                        if dragManager.isDragging {
-                            EmptyGroupDropZone(group: group, onDrop: handleDrop)
-                                .transition(.opacity.combined(with: .scale))
-                        } else {
-                            Text("No issues")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                        }
+            VStack(spacing: 8) {
+                if group.issues.isEmpty {
+                    // Show empty drop zone when dragging
+                    if dragManager.isDragging {
+                        EmptyGroupDropZone(group: group, onDrop: handleDrop)
+                            .transition(.opacity.combined(with: .scale))
                     } else {
-                        ForEach(group.issues) { issue in
-                            // Drop zone before each card
-                            IssueDropZone(
-                                groupId: group.id,
-                                position: .before(issue.id),
-                                onDrop: handleDrop
-                            )
-
-                            // Draggable card
-                            DraggableIssueCard(
-                                issue: issue,
-                                groupId: group.id,
-                                grouping: grouping,
-                                isInspectorVisible: $isInspectorVisible,
-                                focusedElement: $focusedElement
-                            )
-                        }
-
-                        // Drop zone at end
+                        Text("No issues")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                } else {
+                    ForEach(group.issues) { issue in
+                        // Drop zone before each card
                         IssueDropZone(
                             groupId: group.id,
-                            position: .end,
+                            position: .before(issue.id),
                             onDrop: handleDrop
+                        )
+
+                        // Draggable card
+                        DraggableIssueCard(
+                            issue: issue,
+                            groupId: group.id,
+                            grouping: grouping,
+                            isInspectorVisible: $isInspectorVisible,
+                            focusedElement: $focusedElement
                         )
                     }
 
-                    // Add issue button (for all applicable groupings)
-                    if showAddButton, shouldShowAddButton(for: group, grouping: grouping) {
-                        Button(action: {
-                            let defaults = defaultsForGroup(group, grouping: grouping, modelContext: modelContext)
-                            onAddIssue?(defaults)
-                        }) {
-                            HStack {
-                                Image(systemName: "plus.circle")
-                                    .foregroundStyle(.secondary)
+                    // Drop zone at end
+                    IssueDropZone(
+                        groupId: group.id,
+                        position: .end,
+                        onDrop: handleDrop
+                    )
+                }
 
-                                Text("Add Issue")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(isAddButtonFocused ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor).opacity(0.5))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isAddButtonFocused ? Color.accentColor : .clear, lineWidth: 2)
-                            )
+                // Add issue button (for all applicable groupings)
+                if showAddButton, shouldShowAddButton(for: group, grouping: grouping) {
+                    Button(action: {
+                        let defaults = defaultsForGroup(group, grouping: grouping, modelContext: modelContext)
+                        onAddIssue?(defaults)
+                    }) {
+                        HStack {
+                            Image(systemName: "plus.circle")
+                                .foregroundStyle(.secondary)
+
+                            Text("Add Issue")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
-                        .focusable()
-                        .focused($focusedElement, equals: .addButton(group.id))
-                        .focusEffectDisabled()
-                        .onTapGesture {
-                            focusedElement = .addButton(group.id)
-                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(isAddButtonFocused ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isAddButtonFocused ? Color.accentColor : .clear, lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .focusable()
+                    .focused($focusedElement, equals: .addButton(group.id))
+                    .focusEffectDisabled()
+                    .onTapGesture {
+                        focusedElement = .addButton(group.id)
                     }
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
-        .frame(minWidth: 250, maxWidth: 400)
+        .frame(width: 300)
+        .frame(maxHeight: .infinity)
     }
 }
 

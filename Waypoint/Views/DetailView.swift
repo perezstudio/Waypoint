@@ -524,13 +524,8 @@ struct DetailView: View {
 				systemViewContent(for: systemView)
 					.frame(maxWidth: .infinity, maxHeight: .infinity)
 			case .project:
-				ScrollView {
-					VStack(alignment: .leading, spacing: 20) {
-						projectViewContent()
-					}
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.padding(20)
-				}
+				projectViewContent()
+					.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 			}
 		}
 		.frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -996,18 +991,16 @@ struct ProjectIssuesView: View {
 						isInspectorVisible: $isInspectorVisible
 					)
 				case .list:
-					ScrollView {
-						GenericIssueListView(
-							groups: groupedIssues,
-							grouping: settings.groupBy,
-							showAddButton: true,
-							onAddIssue: { defaults in
-								createIssueDefaults = defaults
-								showingCreateIssue = true
-							},
-							isInspectorVisible: $isInspectorVisible
-						)
-					}
+					GenericIssueListView(
+						groups: groupedIssues,
+						grouping: settings.groupBy,
+						showAddButton: true,
+						onAddIssue: { defaults in
+							createIssueDefaults = defaults
+							showingCreateIssue = true
+						},
+						isInspectorVisible: $isInspectorVisible
+					)
 				}
 			}
 		}
@@ -1155,36 +1148,39 @@ struct ProjectUpdatesView: View {
 	}
 
 	var body: some View {
-		VStack(alignment: .leading, spacing: 16) {
-			if projectIssues.isEmpty {
-				VStack(spacing: 12) {
-					Image(systemName: "clock")
-						.font(.system(size: 48))
-						.foregroundStyle(.secondary)
+		ScrollView {
+			VStack(alignment: .leading, spacing: 16) {
+				if projectIssues.isEmpty {
+					VStack(spacing: 12) {
+						Image(systemName: "clock")
+							.font(.system(size: 48))
+							.foregroundStyle(.secondary)
 
-					Text("No Recent Activity")
+						Text("No Recent Activity")
+							.font(.headline)
+							.foregroundStyle(.secondary)
+
+						Text("Updates will appear here as issues are created and modified")
+							.font(.caption)
+							.foregroundStyle(.tertiary)
+							.multilineTextAlignment(.center)
+					}
+					.frame(maxWidth: .infinity)
+					.padding(.top, 60)
+				} else {
+					Text("Recent Activity")
 						.font(.headline)
-						.foregroundStyle(.secondary)
 
-					Text("Updates will appear here as issues are created and modified")
-						.font(.caption)
-						.foregroundStyle(.tertiary)
-						.multilineTextAlignment(.center)
-				}
-				.frame(maxWidth: .infinity)
-				.padding(.top, 60)
-			} else {
-				Text("Recent Activity")
-					.font(.headline)
-
-				VStack(alignment: .leading, spacing: 12) {
-					ForEach(projectIssues.prefix(20)) { issue in
-						UpdateItem(issue: issue)
+					VStack(alignment: .leading, spacing: 12) {
+						ForEach(projectIssues.prefix(20)) { issue in
+							UpdateItem(issue: issue)
+						}
 					}
 				}
-			}
 
-			Spacer()
+				Spacer()
+			}
+			.padding(20)
 		}
 	}
 }

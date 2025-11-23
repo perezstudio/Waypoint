@@ -152,20 +152,22 @@ struct GenericProjectBoardView: View {
 
     var body: some View {
         ScrollView(.horizontal, showsIndicators: false) {
-            HStack(alignment: .top, spacing: 16) {
-                ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
-                    GenericProjectColumn(
-                        group: group,
-                        grouping: grouping,
-                        showAddButton: showAddButton,
-                        onAddProject: onAddProject,
-                        onSelectProject: onSelectProject,
-                        focusedElement: $focusedElement
-                    )
-                    .environmentObject(dragManager)
+            ScrollView(.vertical, showsIndicators: true) {
+                HStack(alignment: .top, spacing: 16) {
+                    ForEach(groups.sorted(by: { $0.order < $1.order })) { group in
+                        GenericProjectColumn(
+                            group: group,
+                            grouping: grouping,
+                            showAddButton: showAddButton,
+                            onAddProject: onAddProject,
+                            onSelectProject: onSelectProject,
+                            focusedElement: $focusedElement
+                        )
+                        .environmentObject(dragManager)
+                    }
                 }
+                .padding(20)
             }
-            .padding(20)
         }
         .onAppear {
             // Clean up drag state when view appears
@@ -440,78 +442,78 @@ struct GenericProjectColumn: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
 
             // Project cards
-            ScrollView {
-                VStack(spacing: 8) {
-                    if group.projects.isEmpty {
-                        // Show empty drop zone when dragging
-                        if dragManager.isDragging {
-                            EmptyProjectGroupDropZone(group: group, onDrop: handleDrop)
-                                .transition(.opacity.combined(with: .scale))
-                        } else {
-                            Text("No projects")
-                                .font(.caption)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 12)
-                        }
+            VStack(spacing: 8) {
+                if group.projects.isEmpty {
+                    // Show empty drop zone when dragging
+                    if dragManager.isDragging {
+                        EmptyProjectGroupDropZone(group: group, onDrop: handleDrop)
+                            .transition(.opacity.combined(with: .scale))
                     } else {
-                        ForEach(group.projects, id: \.id) { project in
-                            // Drop zone before each card
-                            ProjectDropZone(
-                                groupId: group.id,
-                                position: .before(project.id),
-                                onDrop: handleDrop
-                            )
-
-                            // Draggable card
-                            DraggableProjectCard(
-                                project: project,
-                                groupId: group.id,
-                                grouping: grouping,
-                                onSelect: { onSelectProject(project) },
-                                focusedElement: $focusedElement
-                            )
-                        }
-
-                        // Drop zone at end
+                        Text("No projects")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                    }
+                } else {
+                    ForEach(group.projects, id: \.id) { project in
+                        // Drop zone before each card
                         ProjectDropZone(
                             groupId: group.id,
-                            position: .end,
+                            position: .before(project.id),
                             onDrop: handleDrop
+                        )
+
+                        // Draggable card
+                        DraggableProjectCard(
+                            project: project,
+                            groupId: group.id,
+                            grouping: grouping,
+                            onSelect: { onSelectProject(project) },
+                            focusedElement: $focusedElement
                         )
                     }
 
-                    // Add project button
-                    if showAddButton {
-                        Button(action: { onAddProject?() }) {
-                            HStack {
-                                Image(systemName: "plus.circle")
-                                    .foregroundStyle(.secondary)
+                    // Drop zone at end
+                    ProjectDropZone(
+                        groupId: group.id,
+                        position: .end,
+                        onDrop: handleDrop
+                    )
+                }
 
-                                Text("Add Project")
-                                    .font(.subheadline)
-                                    .foregroundStyle(.secondary)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 12)
-                            .background(isAddButtonFocused ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor).opacity(0.5))
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 8)
-                                    .stroke(isAddButtonFocused ? Color.accentColor : .clear, lineWidth: 2)
-                            )
+                // Add project button
+                if showAddButton {
+                    Button(action: { onAddProject?() }) {
+                        HStack {
+                            Image(systemName: "plus.circle")
+                                .foregroundStyle(.secondary)
+
+                            Text("Add Project")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
-                        .focusable()
-                        .focused($focusedElement, equals: .addButton(group.id))
-                        .onTapGesture {
-                            focusedElement = .addButton(group.id)
-                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(isAddButtonFocused ? Color.accentColor.opacity(0.1) : Color(nsColor: .controlBackgroundColor).opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(isAddButtonFocused ? Color.accentColor : .clear, lineWidth: 2)
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .focusable()
+                    .focused($focusedElement, equals: .addButton(group.id))
+                    .onTapGesture {
+                        focusedElement = .addButton(group.id)
                     }
                 }
             }
+            .frame(maxHeight: .infinity, alignment: .top)
         }
-        .frame(minWidth: 250, maxWidth: 400)
+        .frame(width: 300)
+        .frame(maxHeight: .infinity)
     }
 }
 
