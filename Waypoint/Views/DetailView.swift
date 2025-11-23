@@ -270,7 +270,7 @@ struct DetailView: View {
 
 					// Back button - show when viewing project that came from projects list
 					if case .project = projectStore.selectedView, projectStore.cameFromProjectsList {
-						SidebarIconButton(
+						IconButton(
 							icon: "chevron.left",
 							action: {
 								withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
