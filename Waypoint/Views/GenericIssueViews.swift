@@ -628,25 +628,19 @@ struct GenericIssueSection: View {
         VStack(alignment: .leading, spacing: 12) {
             // Section header
             HStack {
-                HStack(spacing: 8) {
-                    Circle()
-                        .fill(color)
-                        .frame(width: 8, height: 8)
-
-                    Text(group.title)
-                        .font(.headline)
-                        .foregroundStyle(.primary)
-
-                    Text("\(group.issues.count)")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 2)
-                        .background(.tertiary.opacity(0.5))
-                        .clipShape(RoundedRectangle(cornerRadius: 4))
-                }
+                Text(group.title)
+                    .font(.headline)
+                    .foregroundStyle(.primary)
 
                 Spacer()
+
+                Text("\(group.issues.count)")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(.tertiary.opacity(0.5))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
 
                 // Add button (for all applicable groupings)
                 if showAddButton, shouldShowAddButton(for: group, grouping: grouping) {
@@ -673,6 +667,10 @@ struct GenericIssueSection: View {
                     }
                 }
             }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(color.opacity(0.1))
+            .clipShape(RoundedRectangle(cornerRadius: 8))
 
             // Issue cards
             VStack(spacing: 8) {
