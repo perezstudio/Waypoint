@@ -120,6 +120,15 @@ struct ContentView: View {
 				Button("") { setViewMode(.board) }
 					.keyboardShortcut("2", modifiers: [.command, .shift])
 					.hidden()
+
+				// Inspector toggle shortcut
+				Button("") {
+					withAnimation(.spring(response: 0.3, dampingFraction: 0.8)) {
+						isInspectorVisible.toggle()
+					}
+				}
+				.keyboardShortcut("i", modifiers: .control)
+				.hidden()
 			}
 		)
     }

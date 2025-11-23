@@ -501,7 +501,7 @@ struct DetailView: View {
 									}
 								},
 								isActive: isInspectorVisible,
-								tooltip: "Toggle Inspector"
+								tooltip: "Toggle Inspector (⌃I)"
 							)
 
 							if viewSettingsStore.controlDisplayMode != .iconOnly {
