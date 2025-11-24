@@ -38,8 +38,8 @@ struct CreateProjectSheet: View {
 		_selectedSpace = State(initialValue: preselectedSpace)
 	}
 
-	// Get project icons from unified catalog
-	private let commonIcons = AppIcon.icons(for: .project)
+	// Get icons from unified catalog
+	private let commonIcons = AppIcon.allIcons
 
 	// Use AppColor enum for consistent colors
 	private let presetColors = AppColor.allCases

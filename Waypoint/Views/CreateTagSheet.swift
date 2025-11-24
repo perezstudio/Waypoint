@@ -36,8 +36,8 @@ struct CreateTagSheet: View {
 		_selectedSpace = State(initialValue: preselectedSpace)
 	}
 
-	// Get tag icons from unified catalog
-	private let commonIcons = AppIcon.icons(for: .tag)
+	// Get icons from unified catalog
+	private let commonIcons = AppIcon.allIcons
 
 	// Use AppColor enum for consistent colors
 	private let presetColors = AppColor.allCases

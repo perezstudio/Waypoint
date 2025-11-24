@@ -28,8 +28,8 @@ struct CreateSpaceSheet: View {
 		case colorGrid
 	}
 
-	// Get space icons from unified catalog
-	private let commonIcons = AppIcon.icons(for: .space)
+	// Get icons from unified catalog
+	private let commonIcons = AppIcon.allIcons
 
 	// Use AppColor enum for consistent colors
 	private let presetColors = AppColor.allCases

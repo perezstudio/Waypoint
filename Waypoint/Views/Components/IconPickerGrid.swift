@@ -121,7 +121,7 @@ private struct IconGridButton: View {
 
 	IconPickerGrid(
 		selectedIcon: $selectedIcon,
-		icons: AppIcon.projectIcons,
+		icons: AppIcon.allIcons,
 		allowNone: false,
 		highlightedIndex: $highlightedIndex,
 		iconsPerRow: 12
