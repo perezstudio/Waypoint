@@ -36,14 +36,8 @@ struct CreateTagSheet: View {
 		_selectedSpace = State(initialValue: preselectedSpace)
 	}
 
-	// Common tag icons
-	private let commonIcons: [String?] = [
-		nil, // No icon option
-		"tag", "tag.fill", "bookmark", "bookmark.fill",
-		"star", "star.fill", "flag", "flag.fill",
-		"circle", "circle.fill", "square", "square.fill",
-		"heart", "heart.fill", "exclamationmark", "exclamationmark.circle.fill"
-	]
+	// Get tag icons from unified catalog
+	private let commonIcons = AppIcon.icons(for: .tag)
 
 	// Use AppColor enum for consistent colors
 	private let presetColors = AppColor.allCases
@@ -222,34 +216,34 @@ struct CreateTagSheet: View {
 		}
 	}
 
+	// Binding helper to convert between String? and String for IconPickerGrid
+	private var iconBinding: Binding<String> {
+		Binding(
+			get: { selectedIcon ?? "" },
+			set: { newValue in
+				selectedIcon = newValue.isEmpty ? nil : newValue
+			}
+		)
+	}
+
 	private var iconScrollSection: some View {
 		Section("Icon (Optional)") {
 			ScrollViewReader { iconProxy in
-				ScrollView(.horizontal, showsIndicators: false) {
-					VStack(alignment: .leading, spacing: 8) {
-						// First row (icons 0-7)
-						HStack(spacing: 8) {
-							ForEach(Array(commonIcons.prefix(8).enumerated()), id: \.offset) { index, icon in
-								iconButton(icon: icon, index: index)
-							}
-						}
-
-						// Second row (icons 8-15)
-						HStack(spacing: 8) {
-							ForEach(Array(commonIcons.suffix(from: 8).enumerated()), id: \.offset) { index, icon in
-								iconButton(icon: icon, index: index + 8)
-							}
-						}
-					}
-					.frame(maxWidth: .infinity, alignment: .leading)
-					.padding(.vertical, 4)
-				}
+				IconPickerGrid(
+					selectedIcon: iconBinding,
+					icons: commonIcons,
+					allowNone: true,
+					highlightedIndex: $highlightedIconIndex,
+					iconsPerRow: 8
+				)
 				.focusable()
 				.focused($focusedField, equals: .iconGrid)
 				.focusEffectDisabled()
 				.onKeyPress(.upArrow) {
 					guard focusedField == .iconGrid else { return .ignored }
 					let iconsPerRow = 8
+					// Account for the nil option at index 0
+					let totalIcons = commonIcons.count + 1
 					if highlightedIconIndex >= iconsPerRow {
 						highlightedIconIndex -= iconsPerRow
 						withAnimation {
@@ -261,8 +255,10 @@ struct CreateTagSheet: View {
 				.onKeyPress(.downArrow) {
 					guard focusedField == .iconGrid else { return .ignored }
 					let iconsPerRow = 8
+					// Account for the nil option at index 0
+					let totalIcons = commonIcons.count + 1
 					if highlightedIconIndex < iconsPerRow {
-						highlightedIconIndex = min(highlightedIconIndex + iconsPerRow, commonIcons.count - 1)
+						highlightedIconIndex = min(highlightedIconIndex + iconsPerRow, totalIcons - 1)
 						withAnimation {
 							iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
 						}
@@ -271,7 +267,9 @@ struct CreateTagSheet: View {
 				}
 				.onKeyPress(.leftArrow) {
 					guard focusedField == .iconGrid else { return .ignored }
-					highlightedIconIndex = highlightedIconIndex > 0 ? highlightedIconIndex - 1 : commonIcons.count - 1
+					// Account for the nil option at index 0
+					let totalIcons = commonIcons.count + 1
+					highlightedIconIndex = highlightedIconIndex > 0 ? highlightedIconIndex - 1 : totalIcons - 1
 					withAnimation {
 						iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
 					}
@@ -279,17 +277,25 @@ struct CreateTagSheet: View {
 				}
 				.onKeyPress(.rightArrow) {
 					guard focusedField == .iconGrid else { return .ignored }
-					highlightedIconIndex = highlightedIconIndex < commonIcons.count - 1 ? highlightedIconIndex + 1 : 0
+					// Account for the nil option at index 0
+					let totalIcons = commonIcons.count + 1
+					highlightedIconIndex = highlightedIconIndex < totalIcons - 1 ? highlightedIconIndex + 1 : 0
 					withAnimation {
 						iconProxy.scrollTo(highlightedIconIndex, anchor: .center)
 					}
 					return .handled
 				}
 				.onKeyPress(.return) {
-					focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
+					guard focusedField == .iconGrid else { return .ignored }
+					// Index 0 is nil, indices 1+ are the actual icons
+					selectedIcon = highlightedIconIndex == 0 ? nil : commonIcons[highlightedIconIndex - 1]
+					return .handled
 				}
 				.onKeyPress(.space) {
-					focusedField == .iconGrid ? (selectedIcon = commonIcons[highlightedIconIndex], .handled).1 : .ignored
+					guard focusedField == .iconGrid else { return .ignored }
+					// Index 0 is nil, indices 1+ are the actual icons
+					selectedIcon = highlightedIconIndex == 0 ? nil : commonIcons[highlightedIconIndex - 1]
+					return .handled
 				}
 				.onChange(of: focusedField) { _, newField in
 					if newField == .iconGrid {
@@ -302,36 +308,6 @@ struct CreateTagSheet: View {
 				}
 			}
 		}
-	}
-
-	private func iconButton(icon: String?, index: Int) -> some View {
-		Button(action: { selectedIcon = icon }) {
-			ZStack {
-				RoundedRectangle(cornerRadius: 8)
-					.fill(selectedIcon == icon ? Color.accentColor : Color.secondary.opacity(0.1))
-
-				Group {
-					if let icon = icon {
-						Image(systemName: icon)
-							.font(.title3)
-							.foregroundStyle(selectedIcon == icon ? .white : .primary)
-					} else {
-						Image(systemName: "slash.circle")
-							.font(.title3)
-							.foregroundStyle(selectedIcon == icon ? .white : .secondary)
-					}
-				}
-
-				if highlightedIconIndex == index && focusedField == .iconGrid {
-					RoundedRectangle(cornerRadius: 8)
-						.strokeBorder(Color.accentColor, lineWidth: 3)
-				}
-			}
-			.frame(width: 44, height: 44)
-			.scaleEffect(highlightedIconIndex == index && focusedField == .iconGrid ? 1.05 : 1.0)
-		}
-		.buttonStyle(.plain)
-		.id(index)
 	}
 
 	private func handleTab(isShift: Bool) {
@@ -351,7 +327,11 @@ struct CreateTagSheet: View {
 		}
 
 		if focusedField == .iconGrid {
-			highlightedIconIndex = commonIcons.firstIndex(of: selectedIcon) ?? 0
+			if let icon = selectedIcon, let index = commonIcons.firstIndex(of: icon) {
+				highlightedIconIndex = index + 1  // +1 because index 0 is the nil option
+			} else {
+				highlightedIconIndex = 0  // nil option
+			}
 		} else if focusedField == .colorGrid {
 			highlightedColorIndex = presetColors.firstIndex(of: selectedColor) ?? 0
 		}

@@ -38,15 +38,8 @@ struct CreateProjectSheet: View {
 		_selectedSpace = State(initialValue: preselectedSpace)
 	}
 
-	// Common project icons
-	private let commonIcons = [
-		"folder.fill", "star.fill", "heart.fill", "flag.fill",
-		"bolt.fill", "lightbulb.fill", "gear", "hammer.fill",
-		"wrench.fill", "paintbrush.fill", "photo.fill", "video.fill",
-		"music.note", "book.fill", "graduationcap.fill", "briefcase.fill",
-		"cart.fill", "creditcard.fill", "chart.bar.fill", "chart.xyaxis.line",
-		"safari.fill", "iphone", "laptopcomputer", "desktopcomputer"
-	]
+	// Get project icons from unified catalog
+	private let commonIcons = AppIcon.icons(for: .project)
 
 	// Use AppColor enum for consistent colors
 	private let presetColors = AppColor.allCases
@@ -179,24 +172,13 @@ struct CreateProjectSheet: View {
 	private var iconGridSection: some View {
 		Section("Icon") {
 			ScrollViewReader { iconProxy in
-				ScrollView(.horizontal, showsIndicators: false) {
-					VStack(spacing: 8) {
-						// First row (icons 0-11)
-						HStack(spacing: 8) {
-							ForEach(Array(commonIcons.prefix(12).enumerated()), id: \.offset) { index, icon in
-								iconButton(icon: icon, index: index)
-							}
-						}
-
-						// Second row (icons 12-23)
-						HStack(spacing: 8) {
-							ForEach(Array(commonIcons.suffix(from: 12).enumerated()), id: \.offset) { index, icon in
-								iconButton(icon: icon, index: index + 12)
-							}
-						}
-					}
-					.padding(.vertical, 4)
-				}
+				IconPickerGrid(
+					selectedIcon: $selectedIcon,
+					icons: commonIcons,
+					allowNone: false,
+					highlightedIndex: $highlightedIconIndex,
+					iconsPerRow: 12
+				)
 				.focusable()
 				.focused($focusedField, equals: .iconGrid)
 				.focusEffectDisabled()
@@ -274,28 +256,6 @@ struct CreateProjectSheet: View {
 				}
 			}
 		}
-	}
-
-	private func iconButton(icon: String, index: Int) -> some View {
-		Button(action: { selectedIcon = icon }) {
-			ZStack {
-				RoundedRectangle(cornerRadius: 8)
-					.fill(selectedIcon == icon ? Color.accentColor : Color.secondary.opacity(0.1))
-
-				Image(systemName: icon)
-					.font(.title3)
-					.foregroundStyle(selectedIcon == icon ? .white : .primary)
-
-				if highlightedIconIndex == index && focusedField == .iconGrid {
-					RoundedRectangle(cornerRadius: 8)
-						.strokeBorder(Color.accentColor, lineWidth: 3)
-				}
-			}
-			.frame(width: 44, height: 44)
-			.scaleEffect(highlightedIconIndex == index && focusedField == .iconGrid ? 1.05 : 1.0)
-		}
-		.buttonStyle(.plain)
-		.id(index)
 	}
 
 	private var colorScrollSection: some View {
